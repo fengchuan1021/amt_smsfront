@@ -1,0 +1,122 @@
+---
+description: AntSMS 前端（Vue 3 + Vite + Tailwind CSS + PrimeVue）架构、页面与开发约束
+alwaysApply: true
+---
+
+# AntSMS 前端工程（frontend）
+
+## 概览
+
+本目录是 AntSMS 的独立前端工程，配合同级后端 `../ant_sms`（Cloudflare Workers + Hono + D1，纯 API）。前端负责登录注册与后台管理界面。
+
+## 技术栈（锁定）
+
+- Vue 3.5，统一使用 `<script setup lang="ts">`，禁止 Options API
+- Vue Router 5.5（history 模式）
+- Vite 8.3
+- Tailwind CSS 4.3（`@tailwindcss/vite` 插件；CSS-first，无 `tailwind.config.js`）
+- PrimeVue 5.0 + `@primeuix/themes`（Aura 预设）
+- primeicons
+- TypeScript 6.0 + vue-tsc
+
+**禁止使用已废弃的 `@primevue/themes` 包**，主题统一从 `@primeuix/themes/aura` 引入。
+
+## 布局要求（固定）
+
+`src/layouts/AppLayout.vue` 必须保持以下结构：
+
+- 顶部：用户信息栏（品牌、用户名、角色、积分余额、用户菜单、退出登录）
+- 下方两栏：
+  - 左侧：导航菜单（按角色过滤）
+  - 右侧：路由内容区（`<RouterView />`）
+- 移动端：左侧菜单可折叠/抽屉式展开
+
+## 路由
+
+- 路由定义：`src/router/index.ts`
+- 页面组件懒加载（`() => import(...)`）
+- `meta` 约定：
+  - `requiresAuth: true`：需要登录
+  - `guest: true`：仅未登录可访问（如登录页）
+  - `roles: ['dealer','admin']`：角色限制，无权限跳转概览
+  - `title / subtitle`：顶栏标题与副标题
+- 守卫逻辑：未登录跳登录；已登录访问登录页跳概览；token 存在但用户信息缺失时先 `refreshMe()`；角色不匹配跳概览
+
+## 页面
+
+- `views/LoginView.vue`：登录 / 注册（角色选择、邀请码）
+- `views/DashboardView.vue`：概览、账户信息、邀请码、快捷入口
+- `views/CardsView.vue`：手机卡列表/搜索/添加/删除（卡商、管理员）
+- `views/ProjectsView.vue`：项目卡片、创建/编辑/停用/删除
+- `views/SmsView.vue`：短信记录筛选与列表
+- `views/ReadSmsView.vue`：按手机号 + 项目读取最新短信并展示扣费结果
+- `views/ReadsView.vue`：消费者消费记录
+- `views/UsersView.vue`：管理员用户列表、充值、卡商/状态切换
+
+## 认证与状态
+
+- `src/stores/auth.ts`：`reactive` + `computed` 的轻量状态管理
+- localStorage 键：
+  - token：`ant_sms_token`
+  - 用户：`ant_sms_user`
+- 角色推导：`is_admin → admin`，否则 `is_card_dealer → dealer`，否则 `consumer`
+- 登录/注册成功后写入会话并跳转概览
+- 退出登录清除会话并跳转登录页
+
+## HTTP 与类型
+
+- 所有请求必须走 `src/lib/api.ts` 的 `request()`：
+  - 自动附加 `Authorization: Bearer <token>`
+  - 自动解包统一响应 `{ok,data}` / `{ok,error}`
+  - 401 时派发 `window` 事件 `auth:expired`，由 `App.vue` 清理会话并跳转登录
+- 后端返回字段为 `snake_case`，前端类型集中在 `src/types.ts`，**禁止随意重命名字段**
+- 接口基址：`import.meta.env.VITE_API_BASE || '/api'`
+
+## 样式规范
+
+- Tailwind CSS v4：`src/style.css` 以 `@import "tailwindcss";` 开头；不要新增 `tailwind.config.js`
+- 优先组合 utility class；品牌色使用 indigo/violet 渐变（`brand-gradient`）
+- 图标使用 `primeicons`（`pi pi-*`）
+- 不引入其他 UI 组件库；交互组件优先 PrimeVue（Button/InputText/Select/DataTable/Dialog/InputNumber/Tag/Toast 等）
+- PrimeVue 主题在 `src/main.ts` 注册（Aura），不要在组件内重复注册
+
+## 后端 API 契约（摘要）
+
+统一前缀 `/api`；成功 `{ok:true,data}`，失败 `{ok:false,error:{code,message}}`。
+
+- `POST /auth/register` `{username,password,is_card_dealer?,invite_code?}` → `{token,user}`
+- `POST /auth/login` `{username,password}` → `{token,user}`
+- `GET /auth/me` → `{user}`
+- `GET /cards?page_size&q` / `POST /cards` / `PATCH /cards/:id` / `DELETE /cards/:id`
+- `GET /projects?page_size&q` / `POST /projects` / `PATCH /projects/:id` / `DELETE /projects/:id`
+- `POST /sms/upload`（卡商手机端，token 可放 body）
+- `GET /sms/latest?phone&project_id` → `{sms|null,charged,already_read,balance}`
+- `GET /sms?project_id&phone&page_size` → `{items,total,page,page_size}`
+- `GET /sms/reads?page_size` → `{items,total,page,page_size}`
+- `GET /stats`：角色相关统计字段
+- `GET /admin/users?q&role` / `POST /admin/users/:id/recharge` / `PATCH /admin/users/:id`
+
+用户对象中 `is_card_dealer / is_admin` 为 boolean。
+
+## 本地开发
+
+```bash
+cd /root/ant_solution/ant_sms
+npm run dev            # 后端 http://127.0.0.1:8787
+
+cd /root/ant_solution/frontend
+npm run dev            # 前端 http://127.0.0.1:5173
+```
+
+Vite 代理已在 `vite.config.ts` 配置：`/api` → `http://127.0.0.1:8787`。默认管理员 `admin / admin123456`。
+
+## 构建与验证（DoD）
+
+```bash
+npm run typecheck      # vue-tsc 通过
+npm run build          # 生产构建通过，产物 dist/
+```
+
+- 修改接口调用前先确认后端契约未变化
+- 不破坏布局结构、路由守卫、统一请求封装与字段命名
+- 不提交 `node_modules`、`dist`、`.env.local` 等本地文件
