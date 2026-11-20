@@ -44,6 +44,18 @@ export interface Project {
   created_at: string;
 }
 
+export interface DealerProject {
+  id: number;
+  project_id: number;
+  name: string;
+  description: string | null;
+  base_price: number;
+  base_status: number;
+  status: number;
+  price: number;
+  override_id: number | null;
+}
+
 export interface Sms {
   id: number;
   project_id: number;

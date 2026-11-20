@@ -68,7 +68,7 @@ const quickLinks = computed(() => {
   const links: Array<{ label: string; to: string; icon: string }> = [];
   if (role.value === 'dealer' || role.value === 'admin') {
     links.push({ label: '管理手机卡', to: '/cards', icon: 'pi pi-mobile' });
-    links.push({ label: '新建项目', to: '/projects', icon: 'pi pi-folder' });
+
   }
   links.push({ label: '读取短信', to: '/read', icon: 'pi pi-search' });
   if (role.value === 'admin') links.push({ label: '用户管理', to: '/users', icon: 'pi pi-users' });

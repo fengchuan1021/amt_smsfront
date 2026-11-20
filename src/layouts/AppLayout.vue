@@ -24,8 +24,9 @@ const navItems: NavItem[] = [
   { label: '手机卡', icon: 'pi pi-mobile', to: '/cards', roles: ['dealer', 'admin'] },
   { label: '项目管理', icon: 'pi pi-folder', to: '/projects', roles: ['admin'] },
   { label: '项目', icon: 'pi pi-folder', to: '/dealer/projects', roles: ['dealer'] },
+  { label: '信息接收', icon: 'pi pi-search', to: '/read' },
   { label: '短信记录', icon: 'pi pi-comments', to: '/sms' },
-  { label: '读取短信', icon: 'pi pi-search', to: '/read' },
+
   { label: '我的消费', icon: 'pi pi-receipt', to: '/reads', roles: ['consumer'] },
   { label: '用户管理', icon: 'pi pi-users', to: '/users', roles: ['admin'] },
 ];
@@ -121,13 +122,7 @@ function navigate(to: string): void {
           </button>
         </nav>
 
-        <div class="mt-8 rounded-2xl bg-gradient-to-br from-indigo-50 to-violet-50 p-4">
-          <div class="mb-2 flex items-center gap-2 text-indigo-700">
-            <i class="pi pi-info-circle" />
-            <span class="text-xs font-bold">使用提示</span>
-          </div>
-          <p class="text-xs leading-5 text-indigo-600/70">手机端上报短信后，可在「读取短信」中按号码和项目查询最新消息。</p>
-        </div>
+    
       </aside>
 
       <button
@@ -138,11 +133,11 @@ function navigate(to: string): void {
       />
 
       <main class="min-w-0 flex-1">
-        <div class="border-b border-slate-200/70 bg-white/50 px-4 py-6 sm:px-6 lg:px-8">
-          <div class="mx-auto max-w-[1440px]">
+        <div class="px-4 py-6 sm:px-6 lg:px-8">
+          <!-- <div class="mx-auto max-w-[1440px]">
             <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">{{ pageTitle }}</h1>
             <p class="mt-1 text-sm text-slate-500">{{ pageSubtitle }}</p>
-          </div>
+          </div> -->
         </div>
         <div class="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
           <RouterView v-slot="{ Component }">

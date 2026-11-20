@@ -54,7 +54,7 @@ const router = createRouter({
           path: 'read',
           name: 'read',
           component: () => import('@/views/ReadSmsView.vue'),
-          meta: { title: '读取短信', subtitle: '按手机号与项目读取最新一条短信' },
+          meta: { title: ' ', subtitle: '' },
         },
         {
           path: 'reads',

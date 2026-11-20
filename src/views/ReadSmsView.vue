@@ -50,9 +50,25 @@ onMounted(init);
 </script>
 
 <template>
-  <div class="grid grid-cols-1 items-start gap-5 xl:grid-cols-[360px_1fr]">
+  <div class="space-y-5">
     <Card>
-      <template #title>读取最新短信</template>
+      <template #content>
+        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-900">
+          <p class="font-bold">使用前请仔细阅读以下提示</p>
+          <ol class="mt-2 list-decimal space-y-1 pl-5">
+            <li>我们仅提供短信接收服务，新号老号请自行检测，如不适合请勿使用！</li>
+            <li>我们不持有号码，号码源自提供商，所以号码随时失效，重要业务切勿绑定。</li>
+            <li>部分提供商为了利益最大化会在多个地方上卡，有可能导致账号被盗，请勿绑定重要业务。</li>
+            <li>如果您不熟悉或者不会使用，请阅读使用帮助；不会用的情况下不建议使用。</li>
+            <li>飞机群：haozhuma（非此 ID 都是仿冒的）</li>
+          </ol>
+        </div>
+      </template>
+    </Card>
+
+    <div class="space-y-5">
+    <Card>
+     
       <template #content>
         <form class="space-y-5" @submit.prevent="readLatest">
           <div><label class="mb-2 block text-xs font-bold text-slate-500">项目</label><Dropdown v-model="projectId" :options="projects" option-label="name" option-value="id" placeholder="选择项目" class="w-full"><template #option="slotProps"><div class="flex w-full items-center justify-between"><span>{{ slotProps.option.name }}</span><span class="text-xs text-slate-400">{{ slotProps.option.price }} 积分/次</span></div></template></Dropdown></div>
@@ -63,7 +79,7 @@ onMounted(init);
       </template>
     </Card>
 
-    <Card v-if="result?.sms">
+    <Card v-if="result?.sms" class="">
       <template #title><div class="flex items-center justify-between gap-3"><span>短信详情</span><Tag :value="result.sms.project_name || `项目 ${result.sms.project_id}`" severity="info" /></div></template>
       <template #content>
         <div class="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 whitespace-pre-wrap break-words">{{ result.sms.content }}</div>
@@ -72,5 +88,6 @@ onMounted(init);
       </template>
     </Card>
     <Card v-else class="xl:col-start-2"><template #content><div class="py-16 text-center"><i class="pi pi-inbox text-5xl text-slate-300" /><p class="mt-4 font-semibold text-slate-700">等待读取</p><p class="mt-1 text-sm text-slate-400">填写手机号并点击「读取最新一条」</p></div></template></Card>
+    </div>
   </div>
 </template>
