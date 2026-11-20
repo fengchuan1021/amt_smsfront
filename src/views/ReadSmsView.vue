@@ -91,6 +91,15 @@ onMounted(init);
         <div class="mt-5 rounded-xl px-4 py-3 text-sm font-semibold" :class="result.charged > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'"><i :class="result.charged > 0 ? 'pi pi-check-circle' : 'pi pi-info-circle'" class="mr-2" />{{ result.charged > 0 ? `本次读取扣费 ${result.charged} 积分，当前余额 ${result.balance}` : result.already_read ? `该短信已读取过，本次不重复扣费，当前余额 ${result.balance}` : `本次读取未扣费，当前余额 ${result.balance}` }}</div>
       </template>
     </Card>
-    <Card v-else><template #content><div class="py-16 text-center"><i class="pi pi-inbox text-5xl text-slate-300" /><p class="mt-4 font-semibold text-slate-700">等待读取</p><p class="mt-1 text-sm text-slate-400">填写手机号并点击「读取最新一条」</p></div></template></Card>
+    <Card v-else-if="result?.phone">
+      <template #title>已获取号码</template>
+      <template #content>
+        <div class="py-8 text-center">
+          <p class="text-xs font-semibold text-slate-400">当前号码</p>
+          <p class="mt-2 font-mono text-3xl font-bold tracking-wide text-slate-800">{{ result.phone }}</p>
+        </div>
+      </template>
+    </Card>
+    <Card v-else><template #content><div class="py-16 text-center"><i class="pi pi-inbox text-5xl text-slate-300" /><p class="mt-4 font-semibold text-slate-700">等待获取</p><p class="mt-1 text-sm text-slate-400">选择项目后点击「获取号码」</p></div></template></Card>
   </div>
 </template>
