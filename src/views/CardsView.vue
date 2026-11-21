@@ -24,9 +24,7 @@ const selected = ref<number[]>([]);
 const loading = ref(true);
 const dialogVisible = ref(false);
 const groupDialogVisible = ref(false);
-const exclusionDialogVisible = ref(false);
 const priceDialogVisible = ref(false);
-const excludedProjectIds = ref<number[]>([]);
 const priceForm = ref<Record<number, number | null>>({});
 const submitting = ref(false);
 const groupName = ref('');
@@ -43,24 +41,6 @@ const filteredCards = computed(() => {
 });
 const allVisibleSelected = computed(() => filteredCards.value.length > 0 && filteredCards.value.every((item) => selected.value.includes(item.id)));
 const projectNameMap = computed(() => new Map(projects.value.map((project) => [project.id, project.name])));
-
-function excludedProjectIdsOf(item: PhoneCard): number[] {
-  return (item.exclude_project_ids || '')
-    .split(',')
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0);
-}
-
-function excludedLabel(item: PhoneCard): string {
-  const ids = excludedProjectIdsOf(item);
-  return ids.length ? `排除 ${ids.length} 项` : '未排除';
-}
-
-function excludedTitle(item: PhoneCard): string {
-  const ids = excludedProjectIdsOf(item);
-  if (!ids.length) return '未排除任何项目';
-  return ids.map((id) => projectNameMap.value.get(id) ?? `项目 ${id}`).join('、');
-}
 
 function projectsPriceOf(item: PhoneCard): Map<number, number> {
   const map = new Map<number, number>();
@@ -204,29 +184,6 @@ async function assignGroup(): Promise<void> {
   }
 }
 
-function openExclusionDialog(): void {
-  if (!selected.value.length) return;
-  const excludedSets = selected.value.map((id) => {
-    const card = cards.value.find((item) => item.id === id);
-    return new Set(card ? excludedProjectIdsOf(card) : []);
-  });
-  excludedProjectIds.value = [...excludedSets[0]].filter((projectId) => excludedSets.every((set) => set.has(projectId))).sort((a, b) => a - b);
-  exclusionDialogVisible.value = true;
-}
-
-async function saveExclusions(): Promise<void> {
-  if (!selected.value.length) return;
-  submitting.value = true;
-  try {
-    await request('/cards/bulk/exclusions', { method: 'POST', body: { ids: selected.value, project_ids: excludedProjectIds.value } });
-    exclusionDialogVisible.value = false;
-    toast.add({ severity: 'success', summary: '排除设置已保存', detail: `已更新 ${selected.value.length} 张手机卡，被排除项目的短信将无法通过该手机号获取`, life: 3000 });
-    await load();
-  } catch (error) {
-    toast.add({ severity: 'error', summary: '保存排除设置失败', detail: error instanceof Error ? error.message : '请稍后重试', life: 3000 });
-  } finally { submitting.value = false; }
-}
-
 async function createGroup(): Promise<void> {
   const name = groupName.value.trim();
   if (!name) return;
@@ -284,7 +241,6 @@ onMounted(load);
       <div v-if="selected.length" class="mb-4 flex flex-wrap items-center gap-2 rounded-xl bg-indigo-50 p-3">
         <span class="mr-2 text-sm font-semibold text-indigo-800">已选择 {{ selected.length }} 张</span>
         <Button label="设置价格" icon="pi pi-tag" severity="secondary" size="small" @click="openPriceDialog" />
-        <Button label="设置排除项目" icon="pi pi-ban" severity="secondary" size="small" @click="openExclusionDialog" />
         <Select v-model="bulkGroup" class="w-44" :options="[{ label: '移至未分组', value: 'none' }, ...groups.map((group) => ({ label: `移至 ${group.name}`, value: group.id }))]" option-label="label" option-value="value" placeholder="批量移动到分组" @update:model-value="assignGroup" />
         <Button label="批量删除" icon="pi pi-trash" severity="danger" size="small" @click="removeSelected" />
         <Button label="取消选择" severity="secondary" text size="small" @click="selected = []" />
@@ -298,7 +254,7 @@ onMounted(load);
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[920px] text-left text-sm">
           <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-            <tr><th class="w-12 px-4 py-3"><input type="checkbox" :checked="allVisibleSelected" aria-label="选择当前列表全部手机卡" @change="toggleVisibleSelection" /></th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">设备标识</th><th class="px-4 py-3">分组</th><th class="px-4 py-3">项目排除</th><th class="px-4 py-3">项目价格</th><th class="px-4 py-3">备注</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">最后上报</th><th class="px-4 py-3">操作</th></tr>
+            <tr><th class="w-12 px-4 py-3"><input type="checkbox" :checked="allVisibleSelected" aria-label="选择当前列表全部手机卡" @change="toggleVisibleSelection" /></th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">设备标识</th><th class="px-4 py-3">分组</th><th class="px-4 py-3">项目价格</th><th class="px-4 py-3">备注</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">最后上报</th><th class="px-4 py-3">操作</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="item in filteredCards" :key="item.id" class="transition hover:bg-slate-50">
@@ -306,7 +262,6 @@ onMounted(load);
               <td class="px-4 py-4 font-mono font-semibold text-slate-800">{{ item.phone }}</td>
               <td class="px-4 py-4 font-mono text-xs text-slate-500">{{ item.device_id || '-' }}</td>
               <td class="px-4 py-4"><Tag :value="item.group_name || '未分组'" :severity="item.group_name ? 'info' : 'secondary'" /></td>
-              <td class="px-4 py-4"><Tag :value="excludedLabel(item)" :severity="excludedProjectIdsOf(item).length ? 'warn' : 'secondary'" :title="excludedTitle(item)" /></td>
               <td class="px-4 py-4"><Tag :value="customPriceLabel(item)" :severity="projectsPriceOf(item).size ? 'info' : 'secondary'" :title="customPriceTitle(item)" /></td>
               <td class="px-4 py-4 text-slate-500">{{ item.remark || '-' }}</td>
               <td class="px-4 py-4"><Tag :value="item.status === 1 ? '启用' : '停用'" :severity="item.status === 1 ? 'success' : 'secondary'" /></td>
@@ -328,19 +283,6 @@ onMounted(load);
       <div><label class="mb-2 block text-xs font-bold text-slate-500">备注</label><Textarea v-model="form.remark" class="w-full" rows="3" placeholder="可选" /></div>
       <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button label="添加" type="submit" :loading="submitting" /></div>
     </form>
-  </Dialog>
-  <Dialog v-model:visible="exclusionDialogVisible" modal header="排除项目" :style="{ width: 'min(92vw, 480px)' }">
-    <div class="space-y-4">
-      <p class="text-xs leading-5 text-slate-400">设置后，选中的 {{ selected.length }} 张手机卡将不再接收这些项目的短信，消费者也无法通过该手机号获取这些项目的短信。确认会覆盖这些手机卡原有的排除设置。</p>
-      <div>
-        <label class="mb-2 block text-xs font-bold text-slate-500">排除的项目</label>
-        <Select v-model="excludedProjectIds" :options="projects" option-label="name" option-value="id" filter multiple placeholder="搜索并选择要排除的项目" class="w-full" />
-      </div>
-      <div class="flex justify-end gap-2">
-        <Button label="取消" severity="secondary" text type="button" @click="exclusionDialogVisible = false" />
-        <Button label="确定" type="button" :loading="submitting" @click="saveExclusions" />
-      </div>
-    </div>
   </Dialog>
   <Dialog v-model:visible="priceDialogVisible" modal header="设置项目价格" :style="{ width: 'min(92vw, 560px)' }">
     <div class="space-y-4">

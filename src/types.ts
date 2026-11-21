@@ -24,7 +24,6 @@ export interface Card {
   user_id: number;
   group_id: number | null;
   group_name?: string | null;
-  exclude_project_ids: string;
   projects_price: string;
   phone: string;
   device_id: string | null;
