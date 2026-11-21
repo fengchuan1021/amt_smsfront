@@ -204,13 +204,7 @@ onMounted(init);
     </div>
 
     <Card v-for="entry in acquired" :key="entry.id">
-      <template #title>
-        <div class="flex items-center justify-between gap-3">
-          <span class="font-mono font-semibold">{{ entry.phone }}</span>
-          <Tag :value="`项目 ${entry.projectId}`" severity="info" />
-          <Tag :value="statusLabel(entry.status)" :severity="entry.status === 'done' ? 'success' : entry.status === 'polling' ? 'info' : 'warn'" />
-        </div>
-      </template>
+     
       <template #content>
         <div class="mb-3 flex items-center gap-3 text-xs">
           <span class="font-semibold">{{ statusLabel(entry.status) }}</span>
@@ -231,20 +225,10 @@ onMounted(init);
             <div class="text-xs font-semibold text-slate-400">上报时间</div>
             <div class="mt-1 font-semibold">{{ fmtDate(entry.result.sms.created_at) }}</div>
           </div>
-          <div>
-            <div class="text-xs font-semibold text-slate-400">设备标识</div>
-            <div class="mt-1 break-all font-mono text-xs">{{ entry.result.sms.device_id || '-' }}</div>
-          </div>
-          <div>
-            <div class="text-xs font-semibold text-slate-400">短信 ID</div>
-            <div class="mt-1 font-semibold">#{{ entry.result.sms.id }}</div>
-          </div>
+      
         </div>
 
-        <div v-if="entry.result" class="rounded-xl px-4 py-3 text-sm font-semibold" :class="entry.result.charged > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'">
-          <i :class="entry.result.charged > 0 ? 'pi pi-check-circle' : 'pi pi-info-circle'" class="mr-2" />
-          {{ entry.result.charged > 0 ? `本次读取扣费 ${entry.result.charged} 积分，当前余额 ${entry.result.balance}` : entry.result.already_read ? `该短信已读取过，本次不重复扣费，当前余额 ${entry.result.balance}` : `本次读取未扣费，当前余额 ${entry.result.balance}` }}
-        </div>
+       
 
         <div class="mt-3 flex gap-2">
           <Button v-if="entry.status === 'polling'" label="停止读取" @click="stopEntry(entry.id)" severity="secondary" outlined />
