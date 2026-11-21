@@ -152,12 +152,29 @@ async function releaseEntry(id: string) {
 
   entry.status = 'idle';
   stopPolling(entry);
-}
+} 
 
-function blockEntry(id: string) {
+async function blockEntry(id: string) {
   const idx = acquired.value.findIndex((e) => e.id === id);
   if (idx === -1) return;
-  stopPolling(acquired.value[idx]);
+  const entry = acquired.value[idx];
+
+  try {
+    await request<{ blocked: boolean }>('/sms/blockphone', {
+      method: 'POST',
+      body: { projectId: entry.projectId, phone: entry.phone },
+    });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: '拉黑失败',
+      detail: error instanceof Error ? error.message : '请稍后重试',
+      life: 3000,
+    });
+    return;
+  }
+
+  stopPolling(entry);
   acquired.value.splice(idx, 1);
 }
 
