@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dropdown from 'primevue/select';
 import InputText from 'primevue/inputtext';
-import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
-import { fmtDate } from '@/lib/format';
-import type { LatestResult,AcquirePhoneResult, Paged, Project } from '@/types';
+import type { LatestResult, AcquirePhoneResult, Paged, Project } from '@/types';
 
 const toast = useToast();
 const projects = ref<Project[]>([]);
@@ -34,6 +32,10 @@ interface PhoneEntry {
 
 const acquired = ref<PhoneEntry[]>([]);
 let entryCounter = 0;
+
+// 全局时钟，每秒跳动，让剩余倒计时平滑变化
+const now = ref(Date.now());
+let clockTimer: ReturnType<typeof setInterval> | null = null;
 
 async function init(): Promise<void> {
   try {
@@ -66,7 +68,7 @@ async function acquirephone(): Promise<void> {
       return;
     }
 
-    const entry: PhoneEntry = {
+    const entry = reactive<PhoneEntry>({
       id: String(entryCounter++),
       phone: data.phone,
       projectId: projectId.value,
@@ -75,7 +77,7 @@ async function acquirephone(): Promise<void> {
       error: null,
       timer: null,
       startTime: Date.now(),
-    };
+    });
     acquired.value.push(entry);
     startPolling(entry);
   } catch (error) {
@@ -153,14 +155,32 @@ function statusLabel(status: PhoneStatus) {
 
 function remainingSeconds(entry: PhoneEntry) {
   if (!entry.startTime) return 0;
-  return Math.max(0, Math.floor((TIMEOUT_MS - (Date.now() - entry.startTime)) / 1000));
+  return Math.max(0, Math.floor((TIMEOUT_MS - (now.value - entry.startTime)) / 1000));
+}
+
+function startClock() {
+  now.value = Date.now();
+  clockTimer = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
+}
+
+function stopClock() {
+  if (clockTimer) {
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
 }
 
 onUnmounted(() => {
+  stopClock();
   for (const entry of acquired.value) stopPolling(entry);
 });
 
-onMounted(init);
+onMounted(() => {
+  startClock();
+  init();
+});
 </script>
 
 <template>
@@ -203,36 +223,45 @@ onMounted(init);
       <p class="mt-1 text-sm text-slate-400">选择项目后点击「获取号码」</p>
     </div>
 
-    <Card v-for="entry in acquired" :key="entry.id">
-     
+    <Card v-if="acquired.length > 0">
       <template #content>
-        <div class="mb-3 flex items-center gap-3 text-xs">
-          <span class="font-semibold">{{ statusLabel(entry.status) }}</span>
-          <span v-if="entry.status === 'polling'" class="text-slate-500">剩余约 {{ remainingSeconds(entry) }} 秒自动停止</span>
-          <span v-if="entry.error" class="text-red-600">{{ entry.error }}</span>
-        </div>
-
-        <div v-if="entry.result?.sms" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 whitespace-pre-wrap break-words mb-3">
-          {{ entry.result.sms.content }}
-        </div>
-
-        <div v-if="entry.result?.sms" class="grid grid-cols-2 gap-4 text-sm mb-3">
-          <div>
-            <div class="text-xs font-semibold text-slate-400">手机号</div>
-            <div class="mt-1 font-mono font-semibold">{{ entry.result.sms.phone }}</div>
-          </div>
-          <div>
-            <div class="text-xs font-semibold text-slate-400">上报时间</div>
-            <div class="mt-1 font-semibold">{{ fmtDate(entry.result.sms.created_at) }}</div>
-          </div>
-      
-        </div>
-
-       
-
-        <div class="mt-3 flex gap-2">
-          <Button v-if="entry.status === 'polling'" label="停止读取" @click="stopEntry(entry.id)" severity="secondary" outlined />
-          <Button label="删除" @click="removeEntry(entry.id)" severity="danger" outlined size="small" />
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">
+                <th class="pb-3 font-mono">手机号</th>
+                <th class="pb-3 font-mono">验证码</th>
+                <th class="pb-3">短信内容</th>
+                <th class="pb-3">错误提示</th>
+                <th class="pb-3 text-right">剩余时间</th>
+                <th class="pb-3">状态</th>
+                <th class="pb-3 text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in acquired" :key="entry.id" class="border-b border-slate-100 last:border-0">
+                <td class="py-3 font-mono text-slate-800">{{ entry.phone }}</td>
+                <td class="py-3 font-mono text-slate-600">{{ entry.result?.sms?.verifycode || '-' }}</td>
+                <td class="py-3 whitespace-pre-wrap break-words">{{ entry.result?.sms?.content || '-' }}</td>
+                <td class="py-3 text-red-600">{{ entry.error || '-' }}</td>
+                <td class="py-3 text-right text-slate-500">
+                  {{ entry.status === 'polling' ? remainingSeconds(entry) + ' 秒' : '-' }}
+                </td>
+                <td class="py-3 font-semibold">{{ statusLabel(entry.status) }}</td>
+                <td class="py-3 text-right flex gap-1">
+                  <Button
+                    v-if="entry.status === 'polling'"
+                    label="停止"
+                    @click="stopEntry(entry.id)"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                  />
+                  <Button label="删除" @click="removeEntry(entry.id)" severity="danger" outlined size="small" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </template>
     </Card>

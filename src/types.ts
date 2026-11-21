@@ -62,6 +62,7 @@ export interface Sms {
   user_id: number;
   phone: string;
   device_id: string | null;
+  verifycode: string;
   content: string;
   consumer_user_id: number | null;
   consumed_points: number;
