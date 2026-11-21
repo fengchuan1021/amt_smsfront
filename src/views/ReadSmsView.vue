@@ -160,6 +160,14 @@ async function blockEntry(id: string) {
   const entry = acquired.value[idx];
 
   try {
+    // 拉黑前先释放占用并退回扣费（若存在占用记录）
+    if (entry.recordId) {
+      await request<ReleasePhoneResult>('/sms/releasephone', {
+        method: 'POST',
+        body: { recordId: entry.recordId },
+      });
+    }
+
     await request<{ blocked: boolean }>('/sms/blockphone', {
       method: 'POST',
       body: { projectId: entry.projectId, phone: entry.phone },
