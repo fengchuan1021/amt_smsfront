@@ -61,9 +61,14 @@ async function acquirephone(): Promise<void> {
       `/sms/acquirephone?project_id=${projectId.value}&phone=${encodeURIComponent(phone.value.trim())}`
     );
 
+    if (!data.phone) {
+      toast.add({ severity: 'error', summary: '获取手机号失败', detail: '服务器未返回手机号，请稍后重试', life: 3200 });
+      return;
+    }
+
     const entry: PhoneEntry = {
       id: String(entryCounter++),
-      phone: phone.value.trim(),
+      phone: data.phone,
       projectId: projectId.value,
       status: 'polling',
       result: null,
