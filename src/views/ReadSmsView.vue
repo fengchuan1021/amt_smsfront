@@ -6,7 +6,7 @@ import Dropdown from 'primevue/select';
 import InputText from 'primevue/inputtext';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
-import type { LatestResult, AcquirePhoneResult, Paged, Project } from '@/types';
+import type { LatestResult, AcquirePhoneResult, Paged, Project, ReleasePhoneResult } from '@/types';
 
 const toast = useToast();
 const projects = ref<Project[]>([]);
@@ -23,6 +23,7 @@ interface PhoneEntry {
   id: string;
   phone: string;
   projectId: number;
+  recordId: number | null;
   status: PhoneStatus;
   result: LatestResult | null;
   error: string | null;
@@ -72,6 +73,7 @@ async function acquirephone(): Promise<void> {
       id: String(entryCounter++),
       phone: data.phone,
       projectId: projectId.value,
+      recordId:data.occupationRecordId ?? null,
       status: 'polling',
       result: null,
       error: null,
@@ -127,15 +129,32 @@ function stopPolling(entry: PhoneEntry) {
   }
 }
 
-function stopEntry(id: string) {
+async function releaseEntry(id: string) {
   const entry = acquired.value.find((e) => e.id === id);
-  if (entry) {
-    entry.status = 'idle';
-    stopPolling(entry);
+  if (!entry) return;
+
+  if (entry.recordId) {
+    try {
+      await request<ReleasePhoneResult>('/sms/releasephone', {
+        method: 'POST',
+        body: { recordId: entry.recordId },
+      });
+    } catch (error) {
+      toast.add({
+        severity: 'error',
+        summary: '释放失败',
+        detail: error instanceof Error ? error.message : '请稍后重试',
+        life: 3000,
+      });
+      return;
+    }
   }
+
+  entry.status = 'idle';
+  stopPolling(entry);
 }
 
-function removeEntry(id: string) {
+function blockEntry(id: string) {
   const idx = acquired.value.findIndex((e) => e.id === id);
   if (idx === -1) return;
   stopPolling(acquired.value[idx]);
@@ -229,21 +248,21 @@ onMounted(() => {
           <table class="min-w-full text-sm">
             <thead>
               <tr class="border-b border-slate-200 text-center text-xs font-semibold text-slate-500">
-                <th class="pb-3 font-mono">手机号</th>
-                <th class="pb-3 font-mono">验证码</th>
-                <th class="pb-3">短信内容</th>
-                <th class="pb-3">错误提示</th>
+                <th class="pb-3 font-mono text-left">手机号</th>
+                <th class="pb-3 font-mono text-left">验证码</th>
+                <th class="pb-3 text-left">短信内容</th>
+                <th class="pb-3 text-left">错误提示</th>
                 <th class="pb-3 text-center">剩余时间</th>
                 <!-- <th class="pb-3">状态</th> -->
-                <th class="pb-3 flex justify-center">操作</th>
+                <th class="pb-3 text-center">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="entry in acquired" :key="entry.id" class="border-b border-slate-100 last:border-0">
                 <td class="py-3 font-mono text-slate-800">{{ entry.phone }}</td>
-                <td class="py-3 font-mono text-slate-600">{{ entry.result?.sms?.verifycode || '-' }}</td>
-                <td class="py-3 whitespace-pre-wrap break-words">{{ entry.result?.sms?.content || '-' }}</td>
-                <td class="py-3 text-red-600">{{ entry.error || '-' }}</td>
+                <td class="py-3 font-mono text-slate-600">{{ entry.result?.sms?.verifycode || '' }}</td>
+                <td class="py-3 whitespace-pre-wrap break-words">{{ entry.result?.sms?.content || '' }}</td>
+                <td class="py-3 text-red-600">{{ entry.error || '' }}</td>
                 <td class="py-3 text-right text-slate-500">
                   {{ entry.status === 'polling' ? remainingSeconds(entry) + ' 秒' : '-' }}
                 </td>
@@ -252,12 +271,12 @@ onMounted(() => {
                   <Button
                     v-if="entry.status === 'polling'"
                     label="释放"
-                    @click="stopEntry(entry.id)"
+                    @click="releaseEntry(entry.id)"
                     severity="secondary"
                     outlined
                     size="small"
                   />
-                  <Button label="拉黑" @click="removeEntry(entry.id)" severity="danger" outlined size="small" />
+                  <Button label="拉黑" @click="blockEntry(entry.id)" severity="danger" outlined size="small" />
                 </td>
               </tr>
             </tbody>
