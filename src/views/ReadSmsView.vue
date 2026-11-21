@@ -228,14 +228,14 @@ onMounted(() => {
         <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
             <thead>
-              <tr class="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">
+              <tr class="border-b border-slate-200 text-center text-xs font-semibold text-slate-500">
                 <th class="pb-3 font-mono">手机号</th>
                 <th class="pb-3 font-mono">验证码</th>
                 <th class="pb-3">短信内容</th>
                 <th class="pb-3">错误提示</th>
-                <th class="pb-3 text-right">剩余时间</th>
-                <th class="pb-3">状态</th>
-                <th class="pb-3 text-right">操作</th>
+                <th class="pb-3 text-center">剩余时间</th>
+                <!-- <th class="pb-3">状态</th> -->
+                <th class="pb-3 flex justify-center">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -247,17 +247,17 @@ onMounted(() => {
                 <td class="py-3 text-right text-slate-500">
                   {{ entry.status === 'polling' ? remainingSeconds(entry) + ' 秒' : '-' }}
                 </td>
-                <td class="py-3 font-semibold">{{ statusLabel(entry.status) }}</td>
-                <td class="py-3 text-right flex gap-1">
+                <!-- <td class="py-3 font-semibold">{{ statusLabel(entry.status) }}</td> -->
+                <td class="py-3 flex justify-center gap-1">
                   <Button
                     v-if="entry.status === 'polling'"
-                    label="停止"
+                    label="释放"
                     @click="stopEntry(entry.id)"
                     severity="secondary"
                     outlined
                     size="small"
                   />
-                  <Button label="删除" @click="removeEntry(entry.id)" severity="danger" outlined size="small" />
+                  <Button label="拉黑" @click="removeEntry(entry.id)" severity="danger" outlined size="small" />
                 </td>
               </tr>
             </tbody>
