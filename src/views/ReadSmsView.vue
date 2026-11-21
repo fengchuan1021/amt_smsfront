@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dropdown from 'primevue/select';
@@ -8,15 +8,32 @@ import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
-import { setBalance } from '@/stores/auth';
-import type { LatestResult, Paged, Project } from '@/types';
+import type { LatestResult,AcquirePhoneResult, Paged, Project } from '@/types';
 
 const toast = useToast();
 const projects = ref<Project[]>([]);
 const projectId = ref<number | null>(null);
 const phone = ref('');
 const loading = ref(false);
-const result = ref<LatestResult | null>(null);
+
+const POLL_INTERVAL_MS = 2000;
+const TIMEOUT_MS = 300_000;
+
+type PhoneStatus = 'idle' | 'polling' | 'done' | 'timeout' | 'error';
+
+interface PhoneEntry {
+  id: string;
+  phone: string;
+  projectId: number;
+  status: PhoneStatus;
+  result: LatestResult | null;
+  error: string | null;
+  timer: ReturnType<typeof setInterval> | null;
+  startTime: number | null;
+}
+
+const acquired = ref<PhoneEntry[]>([]);
+let entryCounter = 0;
 
 async function init(): Promise<void> {
   try {
@@ -24,27 +41,119 @@ async function init(): Promise<void> {
     projects.value = data.items;
     projectId.value = data.items[0]?.id ?? null;
   } catch (error) {
-    toast.add({ severity: 'error', summary: '加载项目失败', detail: error instanceof Error ? error.message : '请稍后重试', life: 3000 });
+    toast.add({
+      severity: 'error',
+      summary: '加载项目失败',
+      detail: error instanceof Error ? error.message : '请稍后重试',
+      life: 3000,
+    });
   }
 }
 
 async function acquirephone(): Promise<void> {
-  if (!projectId.value ) {
+  if (!projectId.value) {
     toast.add({ severity: 'warn', summary: '请填写完整', detail: '请选择项目', life: 2200 });
     return;
   }
   loading.value = true;
-  result.value = null;
   try {
-    const data = await request<LatestResult>(`/sms/acquirephone?project_id=${projectId.value}&phone=${encodeURIComponent(phone.value.trim())}`);
-    result.value = data;
-    setBalance(data.balance);
+    const data = await request<AcquirePhoneResult>(
+      `/sms/acquirephone?project_id=${projectId.value}&phone=${encodeURIComponent(phone.value.trim())}`
+    );
+
+    const entry: PhoneEntry = {
+      id: String(entryCounter++),
+      phone: phone.value.trim(),
+      projectId: projectId.value,
+      status: 'polling',
+      result: null,
+      error: null,
+      timer: null,
+      startTime: Date.now(),
+    };
+    acquired.value.push(entry);
+    startPolling(entry);
   } catch (error) {
-    toast.add({ severity: 'error', summary: '读取失败', detail: error instanceof Error ? error.message : '请稍后重试', life: 3200 });
+    toast.add({
+      severity: 'error',
+      summary: '获取手机号失败',
+      detail: error instanceof Error ? error.message : '请稍后重试',
+      life: 3200,
+    });
   } finally {
     loading.value = false;
   }
 }
+
+function startPolling(entry: PhoneEntry) {
+  const poll = async () => {
+    if (entry.status !== 'polling') return;
+
+    try {
+      const data = await request<LatestResult>(
+        `/sms/latest?phone=${encodeURIComponent(entry.phone)}&project_id=${entry.projectId}`
+      );
+      entry.result = data;
+      if (data.sms) {
+        entry.status = 'done';
+        stopPolling(entry);
+        return;
+      }
+    } catch (error) {
+      entry.error = error instanceof Error ? error.message : '读取失败';
+    }
+
+    if (entry.startTime && Date.now() - entry.startTime >= TIMEOUT_MS) {
+      entry.status = 'timeout';
+      stopPolling(entry);
+    }
+  };
+
+  poll();
+  entry.timer = setInterval(poll, POLL_INTERVAL_MS);
+}
+
+function stopPolling(entry: PhoneEntry) {
+  if (entry.timer) {
+    clearInterval(entry.timer);
+    entry.timer = null;
+  }
+}
+
+function stopEntry(id: string) {
+  const entry = acquired.value.find((e) => e.id === id);
+  if (entry) {
+    entry.status = 'idle';
+    stopPolling(entry);
+  }
+}
+
+function removeEntry(id: string) {
+  const idx = acquired.value.findIndex((e) => e.id === id);
+  if (idx === -1) return;
+  stopPolling(acquired.value[idx]);
+  acquired.value.splice(idx, 1);
+}
+
+function statusLabel(status: PhoneStatus) {
+  const map: Record<PhoneStatus, string> = {
+    idle: '已停止',
+    polling: '读取中',
+    done: '已读取',
+    timeout: '已超时',
+    error: '错误',
+  };
+  return map[status];
+}
+
+function remainingSeconds(entry: PhoneEntry) {
+  if (!entry.startTime) return 0;
+  return Math.max(0, Math.floor((TIMEOUT_MS - (Date.now() - entry.startTime)) / 1000));
+}
+
+onUnmounted(() => {
+  for (const entry of acquired.value) stopPolling(entry);
+});
 
 onMounted(init);
 </script>
@@ -83,23 +192,60 @@ onMounted(init);
       </template>
     </Card>
 
-    <Card v-if="result?.sms">
-      <template #title><div class="flex items-center justify-between gap-3"><span>短信详情</span><Tag :value="result.sms.project_name || `项目 ${result.sms.project_id}`" severity="info" /></div></template>
-      <template #content>
-        <div class="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm leading-7 whitespace-pre-wrap break-words">{{ result.sms.content }}</div>
-        <div class="mt-5 grid grid-cols-2 gap-4 text-sm md:grid-cols-4"><div><div class="text-xs font-semibold text-slate-400">手机号</div><div class="mt-1 font-mono font-semibold">{{ result.sms.phone }}</div></div><div><div class="text-xs font-semibold text-slate-400">上报时间</div><div class="mt-1 font-semibold">{{ fmtDate(result.sms.created_at) }}</div></div><div><div class="text-xs font-semibold text-slate-400">设备标识</div><div class="mt-1 break-all font-mono text-xs">{{ result.sms.device_id || '-' }}</div></div><div><div class="text-xs font-semibold text-slate-400">短信 ID</div><div class="mt-1 font-semibold">#{{ result.sms.id }}</div></div></div>
-        <div class="mt-5 rounded-xl px-4 py-3 text-sm font-semibold" :class="result.charged > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'"><i :class="result.charged > 0 ? 'pi pi-check-circle' : 'pi pi-info-circle'" class="mr-2" />{{ result.charged > 0 ? `本次读取扣费 ${result.charged} 积分，当前余额 ${result.balance}` : result.already_read ? `该短信已读取过，本次不重复扣费，当前余额 ${result.balance}` : `本次读取未扣费，当前余额 ${result.balance}` }}</div>
+    <div v-if="acquired.length === 0" class="py-16 text-center">
+      <i class="pi pi-inbox text-5xl text-slate-300" />
+      <p class="mt-4 font-semibold text-slate-700">暂无号码</p>
+      <p class="mt-1 text-sm text-slate-400">选择项目后点击「获取号码」</p>
+    </div>
+
+    <Card v-for="entry in acquired" :key="entry.id">
+      <template #title>
+        <div class="flex items-center justify-between gap-3">
+          <span class="font-mono font-semibold">{{ entry.phone }}</span>
+          <Tag :value="`项目 ${entry.projectId}`" severity="info" />
+          <Tag :value="statusLabel(entry.status)" :severity="entry.status === 'done' ? 'success' : entry.status === 'polling' ? 'info' : 'warn'" />
+        </div>
       </template>
-    </Card>
-    <Card v-else-if="result?.phone">
-      <template #title>已获取号码</template>
       <template #content>
-        <div class="py-8 text-center">
-          <p class="text-xs font-semibold text-slate-400">当前号码</p>
-          <p class="mt-2 font-mono text-3xl font-bold tracking-wide text-slate-800">{{ result.phone }}</p>
+        <div class="mb-3 flex items-center gap-3 text-xs">
+          <span class="font-semibold">{{ statusLabel(entry.status) }}</span>
+          <span v-if="entry.status === 'polling'" class="text-slate-500">剩余约 {{ remainingSeconds(entry) }} 秒自动停止</span>
+          <span v-if="entry.error" class="text-red-600">{{ entry.error }}</span>
+        </div>
+
+        <div v-if="entry.result?.sms" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 whitespace-pre-wrap break-words mb-3">
+          {{ entry.result.sms.content }}
+        </div>
+
+        <div v-if="entry.result?.sms" class="grid grid-cols-2 gap-4 text-sm mb-3">
+          <div>
+            <div class="text-xs font-semibold text-slate-400">手机号</div>
+            <div class="mt-1 font-mono font-semibold">{{ entry.result.sms.phone }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-400">上报时间</div>
+            <div class="mt-1 font-semibold">{{ fmtDate(entry.result.sms.created_at) }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-400">设备标识</div>
+            <div class="mt-1 break-all font-mono text-xs">{{ entry.result.sms.device_id || '-' }}</div>
+          </div>
+          <div>
+            <div class="text-xs font-semibold text-slate-400">短信 ID</div>
+            <div class="mt-1 font-semibold">#{{ entry.result.sms.id }}</div>
+          </div>
+        </div>
+
+        <div v-if="entry.result" class="rounded-xl px-4 py-3 text-sm font-semibold" :class="entry.result.charged > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'">
+          <i :class="entry.result.charged > 0 ? 'pi pi-check-circle' : 'pi pi-info-circle'" class="mr-2" />
+          {{ entry.result.charged > 0 ? `本次读取扣费 ${entry.result.charged} 积分，当前余额 ${entry.result.balance}` : entry.result.already_read ? `该短信已读取过，本次不重复扣费，当前余额 ${entry.result.balance}` : `本次读取未扣费，当前余额 ${entry.result.balance}` }}
+        </div>
+
+        <div class="mt-3 flex gap-2">
+          <Button v-if="entry.status === 'polling'" label="停止读取" @click="stopEntry(entry.id)" severity="secondary" outlined />
+          <Button label="删除" @click="removeEntry(entry.id)" severity="danger" outlined size="small" />
         </div>
       </template>
     </Card>
-    <Card v-else><template #content><div class="py-16 text-center"><i class="pi pi-inbox text-5xl text-slate-300" /><p class="mt-4 font-semibold text-slate-700">等待获取</p><p class="mt-1 text-sm text-slate-400">选择项目后点击「获取号码」</p></div></template></Card>
   </div>
 </template>
