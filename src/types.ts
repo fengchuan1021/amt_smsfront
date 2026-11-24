@@ -64,7 +64,8 @@ export interface Sms {
 
   verifycode: string;
   content: string;
-
+  consumer_user_id: number | null;
+  consumed_points: number;
   created_at: string;
 }
 

@@ -98,9 +98,11 @@ function startPolling(entry: PhoneEntry) {
   const poll = async () => {
     if (entry.status !== 'polling') return;
 
+    if (entry.recordId == null) return;
+
     try {
       const data = await request<LatestResult>(
-        `/sms/latest?record_id=${encodeURIComponent(entry.recordId)}&projectId=${entry.projectId}`
+        `/sms/latest?record_id=${encodeURIComponent(entry.recordId)}&project_id=${entry.projectId}`
       );
       entry.result = data;
       if (data.sms) {
