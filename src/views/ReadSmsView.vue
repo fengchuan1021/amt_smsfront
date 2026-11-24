@@ -100,7 +100,7 @@ function startPolling(entry: PhoneEntry) {
 
     try {
       const data = await request<LatestResult>(
-        `/sms/latest?phone=${encodeURIComponent(entry.phone)}&project_id=${entry.projectId}`
+        `/sms/latest?record_id=${encodeURIComponent(entry.recordId)}&projectId=${entry.projectId}`
       );
       entry.result = data;
       if (data.sms) {

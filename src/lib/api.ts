@@ -1,4 +1,5 @@
-const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || '/api';
+const DEFAULT_API_BASE = import.meta.env.PROD ? 'https://api.yazisms.com/api' : '/api';
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || DEFAULT_API_BASE;
 const TOKEN_KEY = 'ant_sms_token';
 
 export class ApiError extends Error {
