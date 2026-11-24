@@ -66,12 +66,12 @@ function navigate(to: string): void {
             aria-label="打开菜单"
             @click="mobileMenuOpen = !mobileMenuOpen"
           />
-          <div class="brand-gradient grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg font-extrabold text-white shadow-lg shadow-indigo-200">
-            A
+          <div class="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#FFF6D8]">
+            <img src="/yazi.png" alt="鸭子接码" class="h-9 w-9 object-contain" />
           </div>
           <div class="hidden sm:block">
-            <div class="text-lg font-extrabold tracking-tight text-slate-900">AntSMS</div>
-            <div class="text-xs text-slate-400">短信管理平台</div>
+            <div class="text-lg font-extrabold tracking-tight text-slate-900">鸭子接码</div>
+          
           </div>
         </div>
 
@@ -107,7 +107,7 @@ function navigate(to: string): void {
         class="fixed inset-y-[72px] left-0 z-30 w-64 border-r border-slate-200 bg-white px-4 py-6 transition-transform lg:static lg:translate-x-0"
         :class="mobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'"
       >
-        <div class="mb-5 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">工作台</div>
+        <div class="mb-5 px-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400"></div>
         <nav class="space-y-1">
           <button
             v-for="item in visibleNavItems"
