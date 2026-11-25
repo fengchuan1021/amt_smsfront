@@ -21,6 +21,7 @@ const mobileMenuOpen = ref(false);
 
 const navItems: NavItem[] = [
   { label: '概览', icon: 'pi pi-home', to: '/dashboard' },
+  { label: '充值积分', icon: 'pi pi-wallet', to: '/recharge' },
   { label: '手机卡', icon: 'pi pi-mobile', to: '/cards', roles: ['dealer', 'admin'] },
   { label: '项目管理', icon: 'pi pi-folder', to: '/projects', roles: ['admin'] },
   { label: '项目', icon: 'pi pi-folder', to: '/dealer/projects', roles: ['dealer'] },
@@ -76,10 +77,14 @@ function navigate(to: string): void {
         </div>
 
         <div class="flex items-center gap-2 sm:gap-4">
-          <div class="hidden items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 sm:flex">
+          <button
+            type="button"
+            class="hidden items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 transition hover:border-indigo-200 hover:bg-indigo-100 sm:flex"
+            @click="navigate('/recharge')"
+          >
             <i class="pi pi-wallet text-xs" />
             <span>{{ auth.user?.balance ?? 0 }} 积分</span>
-          </div>
+          </button>
           <div class="hidden text-right sm:block">
             <div class="text-sm font-semibold text-slate-800">{{ auth.user?.username }}</div>
             <div class="text-xs text-slate-400">{{ roleLabel }}</div>

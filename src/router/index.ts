@@ -27,6 +27,12 @@ const router = createRouter({
           meta: { title: '概览', subtitle: '账户与数据一览' },
         },
         {
+          path: 'recharge',
+          name: 'recharge',
+          component: () => import('@/views/RechargeView.vue'),
+          meta: { title: '充值积分', subtitle: '使用 USDT 等方式为账户充值积分' },
+        },
+        {
           path: 'cards',
           name: 'cards',
           component: () => import('@/views/CardsView.vue'),

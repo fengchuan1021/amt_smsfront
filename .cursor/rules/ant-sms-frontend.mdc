@@ -52,6 +52,7 @@ alwaysApply: true
 - `views/ReadSmsView.vue`：按手机号 + 项目读取最新短信并展示扣费结果
 - `views/ReadsView.vue`：消费者消费记录
 - `views/UsersView.vue`：管理员用户列表、充值、卡商/状态切换
+- `views/RechargeView.vue`：充值积分。汇率固定 **100 积分 = 1 元**，页面展示渠道返回的 `points_per_currency`，不要写死成 1 积分 = 1 元
 
 ## 认证与状态
 
@@ -95,8 +96,11 @@ alwaysApply: true
 - `GET /sms/reads?page_size` → `{items,total,page,page_size}`
 - `GET /stats`：角色相关统计字段
 - `GET /admin/users?q&role` / `POST /admin/users/:id/recharge` / `PATCH /admin/users/:id`
+- `GET /recharge/channels`、`GET /recharge/orders`、`POST /recharge/orders` `{channel_code, points}`
 
 用户对象中 `is_card_dealer / is_admin` 为 boolean。
+
+积分汇率：**100 积分 = 1 元**。充值档位和「N 积分 = 1 元」文案以渠道接口的 `points_per_currency`（当前为 100）为准。
 
 ## 本地开发
 

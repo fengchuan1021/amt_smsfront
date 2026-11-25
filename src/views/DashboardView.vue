@@ -65,7 +65,9 @@ const cards = computed<StatItem[]>(() => {
 });
 
 const quickLinks = computed(() => {
-  const links: Array<{ label: string; to: string; icon: string }> = [];
+  const links: Array<{ label: string; to: string; icon: string }> = [
+    { label: '充值积分', to: '/recharge', icon: 'pi pi-wallet' },
+  ];
   if (role.value === 'dealer' || role.value === 'admin') {
     links.push({ label: '管理手机卡', to: '/cards', icon: 'pi pi-mobile' });
 

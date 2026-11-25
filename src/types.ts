@@ -81,4 +81,36 @@ export interface LatestResult { sms: Sms | null; phone?: string | null; charged:
 export interface ReleasePhoneResult { released: boolean; refunded: number; balance: number; }
 
 export interface AdminUser { id: number; username: string; is_card_dealer: boolean; is_admin: boolean; parent_id: number | null; invite_code: string; balance: number; status: number; created_at: string; }
+
+export interface RechargeChannel {
+  code: string;
+  name: string;
+  provider: string;
+  status: number;
+  sort_order: number;
+  currency: string;
+  points_per_currency: number;
+  min_points: number;
+  max_points: number;
+  presets: number[];
+  remark: string | null;
+}
+
+export interface RechargeOrder {
+  order_no: string;
+  channel_code: string;
+  channel_name: string | null;
+  points: number;
+  amount: number;
+  currency: string;
+  actual_amount: number | null;
+  pay_address: string | null;
+  trade_id: string | null;
+  tx_id: string | null;
+  status: number;
+  paid_at: string | null;
+  expired_at: string | null;
+  created_at: string;
+  balance?: number;
+}
 export interface AuthResponse { token: string; user: User; }
