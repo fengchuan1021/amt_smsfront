@@ -304,9 +304,9 @@ onMounted(() => {
                 <th class="pb-3 font-mono text-left">手机号</th>
                 <th class="pb-3 font-mono text-left">验证码</th>
                 <th class="pb-3 text-left">短信内容</th>
-                <th class="pb-3 text-left">错误提示</th>
+              
                 <th class="pb-3 text-center">剩余时间</th>
-                <!-- <th class="pb-3">状态</th> -->
+                <th class="pb-3">状态</th>
                 <th class="pb-3 text-center">操作</th>
               </tr>
             </thead>
@@ -315,11 +315,11 @@ onMounted(() => {
                 <td class="py-3 font-mono text-slate-800">{{ entry.phone }}</td>
                 <td class="py-3 font-mono text-slate-600">{{ entry.result?.sms?.verifycode || '' }}</td>
                 <td class="py-3 whitespace-pre-wrap break-words">{{ entry.result?.sms?.content || '' }}</td>
-                <td class="py-3 text-red-600">{{ entry.error || '' }}</td>
+                <!-- <td class="py-3 text-red-600">{{ entry.error || '' }}</td> -->
                 <td class="py-3 text-right text-slate-500">
                   {{ entry.status === 'polling' ? remainingSeconds(entry) + ' 秒' : '-' }}
                 </td>
-                <!-- <td class="py-3 font-semibold">{{ statusLabel(entry.status) }}</td> -->
+                <td class="py-3 font-semibold">{{ statusLabel(entry.status) }}</td>
                 <td class="py-3 flex justify-center gap-1">
                   <Button
                     v-if="entry.status === 'polling'"
