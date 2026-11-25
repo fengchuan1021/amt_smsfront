@@ -29,7 +29,10 @@ export interface Card {
   device_id: string | null;
   remark: string | null;
   status: number;
+  card_isp: number;
+  card_area: number;
   last_seen_at: string | null;
+  used_projects?: string | null;
   created_at: string;
   owner_name?: string | null;
 }
@@ -40,6 +43,7 @@ export interface Project {
   description: string | null;
   price: number;
   status: number;
+  keyword: string;
   created_at: string;
 }
 

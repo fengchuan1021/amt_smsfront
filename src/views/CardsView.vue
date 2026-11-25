@@ -13,6 +13,20 @@ import { request } from '@/lib/api';
 import { fmtDate } from '@/lib/format';
 import type { Card as PhoneCard, CardGroup, Paged, Project } from '@/types';
 
+const ISP_OPTIONS = [
+  { label: '未设置', value: 0 },
+  { label: '中国移动', value: 1 },
+  { label: '中国联通', value: 2 },
+  { label: '中国电信', value: 3 },
+  { label: '中国广电', value: 4 },
+  { label: '虚拟卡', value: 5 },
+];
+const AREA_OPTIONS = [
+  '未设置', '北京', '天津', '河北', '山西', '内蒙古', '辽宁', '吉林', '黑龙江', '上海',
+  '江苏', '浙江', '安徽', '福建', '江西', '山东', '河南', '湖北', '湖南', '广东',
+  '广西', '海南', '重庆', '四川', '贵州', '云南', '西藏', '陕西', '甘肃', '青海', '宁夏', '新疆',
+].map((label, value) => ({ label, value }));
+
 const toast = useToast();
 const cards = ref<PhoneCard[]>([]);
 const groups = ref<CardGroup[]>([]);
@@ -24,11 +38,16 @@ const selected = ref<number[]>([]);
 const loading = ref(true);
 const dialogVisible = ref(false);
 const groupDialogVisible = ref(false);
+const moveDialogVisible = ref(false);
 const priceDialogVisible = ref(false);
 const priceForm = ref<Record<number, number | null>>({});
+const priceTargetIds = ref<number[]>([]);
 const submitting = ref(false);
 const groupName = ref('');
-const form = ref({ phone: '', device_id: '', remark: '', group_id: null as number | null });
+const editingId = ref<number | null>(null);
+const moveCard = ref<PhoneCard | null>(null);
+const moveGroup = ref<number | string>('none');
+const form = ref({ phone: '', device_id: '', remark: '', group_id: null as number | null, card_isp: 0, card_area: 0, status: 1 as 0 | 1 });
 
 const filteredCards = computed(() => {
   const q = search.value.trim().toLowerCase();
@@ -68,9 +87,10 @@ function customPriceTitle(item: PhoneCard): string {
     .join('、');
 }
 
-function openPriceDialog(): void {
-  if (!selected.value.length) return;
-  const maps = selected.value.map((id) => {
+function openPriceFor(ids: number[]): void {
+  if (!ids.length) return;
+  priceTargetIds.value = [...ids];
+  const maps = ids.map((id) => {
     const card = cards.value.find((item) => item.id === id);
     return card ? projectsPriceOf(card) : new Map<number, number>();
   });
@@ -82,16 +102,16 @@ function openPriceDialog(): void {
 }
 
 async function savePrices(): Promise<void> {
-  if (!selected.value.length) return;
+  if (!priceTargetIds.value.length) return;
   const prices = projects.value
     .filter((project) => priceForm.value[project.id] != null)
     .map((project) => ({ project_id: project.id, price: priceForm.value[project.id] as number }));
   submitting.value = true;
   try {
-    await request('/cards/bulk/prices', { method: 'POST', body: { ids: selected.value, prices } });
+    await request('/cards/bulk/prices', { method: 'POST', body: { ids: priceTargetIds.value, prices } });
     priceDialogVisible.value = false;
     priceForm.value = {};
-    toast.add({ severity: 'success', summary: '项目价格已保存', detail: `已更新 ${selected.value.length} 张手机卡，自定义价格优先于项目默认价格`, life: 3000 });
+    toast.add({ severity: 'success', summary: '项目价格已保存', detail: `已更新 ${priceTargetIds.value.length} 张手机卡，自定义价格优先于项目默认价格`, life: 3000 });
     await load();
   } catch (error) {
     toast.add({ severity: 'error', summary: '保存价格失败', detail: error instanceof Error ? error.message : '请稍后重试', life: 3000 });
@@ -122,25 +142,77 @@ function toggleVisibleSelection(): void {
   selected.value = allVisibleSelected.value ? selected.value.filter((id) => !ids.includes(id)) : [...new Set([...selected.value, ...ids])];
 }
 
+function optionLabel(options: { label: string; value: number }[], value: number | null | undefined): string {
+  return options.find((option) => option.value === value)?.label ?? '未设置';
+}
+
+function emptyForm() {
+  return { phone: '', device_id: '', remark: '', group_id: null as number | null, card_isp: 0, card_area: 0, status: 1 as 0 | 1 };
+}
+
 function openCreate(): void {
-  form.value = { phone: '', device_id: '', remark: '', group_id: null };
+  editingId.value = null;
+  form.value = emptyForm();
   dialogVisible.value = true;
 }
 
-async function create(): Promise<void> {
+function openEdit(item: PhoneCard): void {
+  editingId.value = item.id;
+  form.value = {
+    phone: item.phone,
+    device_id: item.device_id || '',
+    remark: item.remark || '',
+    group_id: item.group_id,
+    card_isp: item.card_isp ?? 0,
+    card_area: item.card_area ?? 0,
+    status: item.status === 0 ? 0 : 1,
+  };
+  dialogVisible.value = true;
+}
+
+function openMove(item: PhoneCard): void {
+  moveCard.value = item;
+  moveGroup.value = item.group_id ?? 'none';
+  moveDialogVisible.value = true;
+}
+
+async function saveCard(): Promise<void> {
   submitting.value = true;
+  const payload = {
+    phone: form.value.phone.trim(),
+    device_id: form.value.device_id.trim() || null,
+    remark: form.value.remark.trim() || null,
+    group_id: form.value.group_id,
+    card_isp: form.value.card_isp,
+    card_area: form.value.card_area,
+  };
   try {
-    await request('/cards', { method: 'POST', body: {
-      phone: form.value.phone.trim(),
-      device_id: form.value.device_id.trim() || undefined,
-      remark: form.value.remark.trim() || undefined,
-      group_id: form.value.group_id || undefined,
-    } });
+    if (editingId.value) {
+      await request(`/cards/${editingId.value}`, { method: 'PATCH', body: { ...payload, status: form.value.status } });
+      toast.add({ severity: 'success', summary: '已保存', detail: '手机卡信息已更新', life: 2200 });
+    } else {
+      await request('/cards', { method: 'POST', body: { ...payload, device_id: payload.device_id || undefined, remark: payload.remark || undefined, group_id: payload.group_id || undefined } });
+      toast.add({ severity: 'success', summary: '添加成功', detail: '手机卡已添加', life: 2200 });
+    }
     dialogVisible.value = false;
-    toast.add({ severity: 'success', summary: '添加成功', detail: '手机卡已添加', life: 2200 });
+    editingId.value = null;
     await load();
   } catch (error) {
-    toast.add({ severity: 'error', summary: '添加失败', detail: error instanceof Error ? error.message : '请检查输入', life: 3000 });
+    toast.add({ severity: 'error', summary: editingId.value ? '保存失败' : '添加失败', detail: error instanceof Error ? error.message : '请检查输入', life: 3000 });
+  } finally { submitting.value = false; }
+}
+
+async function confirmMove(): Promise<void> {
+  if (!moveCard.value) return;
+  const groupId = moveGroup.value === 'none' ? null : Number(moveGroup.value);
+  submitting.value = true;
+  try {
+    await request('/cards/bulk/group', { method: 'POST', body: { ids: [moveCard.value.id], group_id: groupId } });
+    moveDialogVisible.value = false;
+    toast.add({ severity: 'success', summary: '分组已更新', detail: moveCard.value.phone, life: 1800 });
+    await load();
+  } catch (error) {
+    toast.add({ severity: 'error', summary: '移动分组失败', detail: error instanceof Error ? error.message : '请稍后重试', life: 3000 });
   } finally { submitting.value = false; }
 }
 
@@ -240,7 +312,7 @@ onMounted(load);
     <template #content>
       <div v-if="selected.length" class="mb-4 flex flex-wrap items-center gap-2 rounded-xl bg-indigo-50 p-3">
         <span class="mr-2 text-sm font-semibold text-indigo-800">已选择 {{ selected.length }} 张</span>
-        <Button label="设置价格" icon="pi pi-tag" severity="secondary" size="small" @click="openPriceDialog" />
+        <!-- <Button label="设置价格" icon="pi pi-tag" severity="secondary" size="small" @click="openPriceFor(selected)" /> -->
         <Select v-model="bulkGroup" class="w-44" :options="[{ label: '移至未分组', value: 'none' }, ...groups.map((group) => ({ label: `移至 ${group.name}`, value: group.id }))]" option-label="label" option-value="value" placeholder="批量移动到分组" @update:model-value="assignGroup" />
         <Button label="批量删除" icon="pi pi-trash" severity="danger" size="small" @click="removeSelected" />
         <Button label="取消选择" severity="secondary" text size="small" @click="selected = []" />
@@ -252,21 +324,34 @@ onMounted(load);
         <p class="mt-1 text-sm text-slate-400">点击「添加手机卡」录入你的第一张卡</p>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[920px] text-left text-sm">
+        <table class="w-full min-w-[1400px] text-left text-sm">
           <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-            <tr><th class="w-12 px-4 py-3"><input type="checkbox" :checked="allVisibleSelected" aria-label="选择当前列表全部手机卡" @change="toggleVisibleSelection" /></th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">设备标识</th><th class="px-4 py-3">分组</th><th class="px-4 py-3">项目价格</th><th class="px-4 py-3">备注</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">最后上报</th><th class="px-4 py-3">操作</th></tr>
+            <tr><th class="w-12 px-4 py-3"><input type="checkbox" :checked="allVisibleSelected" aria-label="选择当前列表全部手机卡" @change="toggleVisibleSelection" /></th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">运营商</th><th class="px-4 py-3">地区</th><th class="px-4 py-3">设备标识</th><th class="px-4 py-3">分组</th><th class="px-4 py-3">备注</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">最后上报</th><th class="px-4 py-3">已用项目</th><th class="px-4 py-3">操作</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="item in filteredCards" :key="item.id" class="transition hover:bg-slate-50">
               <td class="px-4 py-4"><input v-model="selected" type="checkbox" :value="item.id" :aria-label="`选择手机号${item.phone}`" /></td>
               <td class="px-4 py-4 font-mono font-semibold text-slate-800">{{ item.phone }}</td>
+              <td class="px-4 py-4 text-slate-600">{{ optionLabel(ISP_OPTIONS, item.card_isp) }}</td>
+              <td class="px-4 py-4 text-slate-600">{{ optionLabel(AREA_OPTIONS, item.card_area) }}</td>
               <td class="px-4 py-4 font-mono text-xs text-slate-500">{{ item.device_id || '-' }}</td>
               <td class="px-4 py-4"><Tag :value="item.group_name || '未分组'" :severity="item.group_name ? 'info' : 'secondary'" /></td>
-              <td class="px-4 py-4"><Tag :value="customPriceLabel(item)" :severity="projectsPriceOf(item).size ? 'info' : 'secondary'" :title="customPriceTitle(item)" /></td>
+              <!-- <td class="px-4 py-4"><Tag :value="customPriceLabel(item)" :severity="projectsPriceOf(item).size ? 'info' : 'secondary'" :title="customPriceTitle(item)" /></td> -->
               <td class="px-4 py-4 text-slate-500">{{ item.remark || '-' }}</td>
               <td class="px-4 py-4"><Tag :value="item.status === 1 ? '启用' : '停用'" :severity="item.status === 1 ? 'success' : 'secondary'" /></td>
               <td class="whitespace-nowrap px-4 py-4 text-slate-500">{{ fmtDate(item.last_seen_at) }}</td>
-              <td class="px-4 py-4"><Button label="删除" severity="danger" text size="small" @click="removeOne(item)" /></td>
+              <td class="px-4 py-4">
+                <span v-if="!item.used_projects" class="text-slate-400">-</span>
+                <span v-else class="inline-flex flex-wrap gap-1">
+                  <Tag v-for="name in item.used_projects.split('、')" :key="name" :value="name" severity="info" />
+                </span>
+              </td>
+              <td class="whitespace-nowrap px-4 py-4">
+                <Button label="编辑" text size="small" @click="openEdit(item)" />
+                <Button label="移动分组" text size="small" @click="openMove(item)" />
+                <Button label="删除" severity="danger" text size="small" @click="removeOne(item)" />
+                <!-- <Button label="设置价格" text size="small" @click="openPriceFor([item.id])" /> -->
+              </td>
             </tr>
           </tbody>
         </table>
@@ -275,18 +360,30 @@ onMounted(load);
     </template>
   </Card>
 
-  <Dialog v-model:visible="dialogVisible" modal header="添加手机卡" :style="{ width: 'min(92vw, 440px)' }">
-    <form class="space-y-4" @submit.prevent="create">
+  <Dialog v-model:visible="dialogVisible" modal :header="editingId ? '编辑手机卡' : '添加手机卡'" :style="{ width: 'min(92vw, 480px)' }">
+    <form class="space-y-4" @submit.prevent="saveCard">
       <div><label class="mb-2 block text-xs font-bold text-slate-500">手机号</label><InputText v-model="form.phone" class="w-full" required placeholder="例如 13800000000" /></div>
       <div><label class="mb-2 block text-xs font-bold text-slate-500">设备标识</label><InputText v-model="form.device_id" class="w-full" placeholder="手机唯一标识（可选）" /></div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div><label class="mb-2 block text-xs font-bold text-slate-500">运营商</label><Select v-model="form.card_isp" class="w-full" :options="ISP_OPTIONS" option-label="label" option-value="value" placeholder="未设置" /></div>
+        <div><label class="mb-2 block text-xs font-bold text-slate-500">所属地区</label><Select v-model="form.card_area" class="w-full" :options="AREA_OPTIONS" option-label="label" option-value="value" placeholder="未设置" filter /></div>
+      </div>
       <div><label class="mb-2 block text-xs font-bold text-slate-500">所属分组</label><Select v-model="form.group_id" class="w-full" :options="groups.map((group) => ({ label: group.name, value: group.id }))" option-label="label" option-value="value" placeholder="暂不分组" show-clear /></div>
+      <div v-if="editingId"><label class="mb-2 block text-xs font-bold text-slate-500">状态</label><Select v-model="form.status" class="w-full" :options="[{ label: '启用', value: 1 }, { label: '停用', value: 0 }]" option-label="label" option-value="value" /></div>
       <div><label class="mb-2 block text-xs font-bold text-slate-500">备注</label><Textarea v-model="form.remark" class="w-full" rows="3" placeholder="可选" /></div>
-      <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button label="添加" type="submit" :loading="submitting" /></div>
+      <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button :label="editingId ? '保存' : '添加'" type="submit" :loading="submitting" /></div>
     </form>
   </Dialog>
-  <Dialog v-model:visible="priceDialogVisible" modal header="设置项目价格" :style="{ width: 'min(92vw, 560px)' }">
+  <Dialog v-model:visible="moveDialogVisible" modal header="移动到分组" :style="{ width: 'min(92vw, 400px)' }">
     <div class="space-y-4">
-      <p class="text-xs leading-5 text-slate-400">每列可输入该项目对选中手机卡的自定义价格，空白表示使用项目默认价格。确认后会覆盖这些手机卡原有的项目价格设置。</p>
+      <p class="text-sm text-slate-600">将 <span class="font-mono font-semibold text-slate-800">{{ moveCard?.phone }}</span> 移动到所选分组。</p>
+      <Select v-model="moveGroup" class="w-full" :options="[{ label: '未分组', value: 'none' }, ...groups.map((group) => ({ label: group.name, value: group.id }))]" option-label="label" option-value="value" placeholder="选择分组" />
+      <div class="flex justify-end gap-2"><Button label="取消" severity="secondary" text type="button" @click="moveDialogVisible = false" /><Button label="确定" type="button" :loading="submitting" @click="confirmMove" /></div>
+    </div>
+  </Dialog>
+  <!-- <Dialog v-model:visible="priceDialogVisible" modal header="设置项目价格" :style="{ width: 'min(92vw, 560px)' }">
+    <div class="space-y-4">
+      <p class="text-xs leading-5 text-slate-400">将应用到 {{ priceTargetIds.length }} 张手机卡。空白表示使用项目默认价格，确认后会覆盖这些手机卡原有的项目价格设置。</p>
       <div class="space-y-2 max-h-[300px] overflow-y-auto pr-2">
         <div v-for="project in projects" :key="project.id" class="flex items-center justify-between gap-3 text-sm border-b border-slate-100 pb-2 last:border-0">
           <span class="text-slate-700">{{ project.name }}</span>
@@ -301,7 +398,7 @@ onMounted(load);
         <Button label="确定" type="button" :loading="submitting" @click="savePrices" />
       </div>
     </div>
-  </Dialog>
+  </Dialog> -->
   <Dialog v-model:visible="groupDialogVisible" modal header="新建手机卡分组" :style="{ width: 'min(92vw, 400px)' }">
     <form class="space-y-4" @submit.prevent="createGroup">
       <div><label class="mb-2 block text-xs font-bold text-slate-500">分组名称</label><InputText v-model="groupName" class="w-full" maxlength="64" required placeholder="例如：移动卡 / 测试号码" /></div>

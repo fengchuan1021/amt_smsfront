@@ -108,7 +108,7 @@ cd /root/ant_solution/frontend
 npm run dev            # 前端 http://127.0.0.1:5173
 ```
 
-Vite 代理已在 `vite.config.ts` 配置：`/api` → `http://127.0.0.1:8787`。默认管理员 `admin / admin123456`。
+Vite 代理已在 `vite.config.ts` 配置：`/api` → `http://127.0.0.1:8787`。默认管理员 `bigmouth / bigmouth666`。
 
 ## 构建与验证（DoD）
 

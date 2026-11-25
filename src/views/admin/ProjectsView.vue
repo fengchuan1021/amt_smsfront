@@ -19,13 +19,13 @@ const loading = ref(true);
 const dialogVisible = ref(false);
 const submitting = ref(false);
 const editingId = ref<number | null>(null);
-const form = ref({ name: '', description: '', price: 0 });
+const form = ref({ name: '', description: '', price: null as number | null, keyword: '' });
 
 const canCreate = computed(() => role.value === 'admin');
 const filteredProjects = computed(() => {
   const q = search.value.trim().toLowerCase();
   if (!q) return projects.value;
-  return projects.value.filter((item) => `${item.name} ${item.description || ''}`.toLowerCase().includes(q));
+  return projects.value.filter((item) => `${item.name} ${item.description || ''} ${item.keyword || ''}`.toLowerCase().includes(q));
 });
 
 function canManage(): boolean {
@@ -46,13 +46,13 @@ async function load(): Promise<void> {
 
 function openCreate(): void {
   editingId.value = null;
-  form.value = { name: '', description: '', price: 0 };
+  form.value = { name: '', description: '', price: null, keyword: '' };
   dialogVisible.value = true;
 }
 
 function openEdit(item: Project): void {
   editingId.value = item.id;
-  form.value = { name: item.name, description: item.description || '', price: item.price };
+  form.value = { name: item.name, description: item.description || '', price: item.price, keyword: item.keyword || '' };
   dialogVisible.value = true;
 }
 
@@ -61,7 +61,8 @@ async function save(): Promise<void> {
   const payload = {
     name: form.value.name.trim(),
     description: form.value.description.trim() || null,
-    price: Number(form.value.price) || 0,
+    price: form.value.price ?? 0,
+    keyword: form.value.keyword.trim(),
   };
   try {
     if (editingId.value) {
@@ -134,8 +135,9 @@ onMounted(load);
         <Tag :value="item.status === 1 ? '启用' : '停用'" :severity="item.status === 1 ? 'success' : 'secondary'" />
       </div>
       <p class="line-clamp-2 min-h-[40px] text-sm text-slate-500">{{ item.description || '暂无说明' }}</p>
-      <div class="mt-auto flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
+      <div class="mt-auto flex items-center justify-between gap-3 border-t border-dashed border-slate-200 pt-3">
         <div class="text-sm font-extrabold text-indigo-600">{{ item.price }} <span class="text-xs font-semibold text-slate-400">积分/次</span></div>
+        <div class="truncate text-xs text-slate-400">关键词 {{ item.keyword || '未设置' }}</div>
       </div>
       <div v-if="canManage()" class="flex flex-wrap gap-2">
         <Button label="编辑" severity="secondary" outlined size="small" @click="openEdit(item)" />
@@ -150,8 +152,13 @@ onMounted(load);
       <div><label class="mb-2 block text-xs font-bold text-slate-500">项目名称</label><InputText v-model="form.name" class="w-full" required placeholder="例如 验证码项目" /></div>
       <div><label class="mb-2 block text-xs font-bold text-slate-500">项目说明</label><Textarea v-model="form.description" class="w-full" rows="3" placeholder="可选" /></div>
       <div>
+        <label class="mb-2 block text-xs font-bold text-slate-500">关键词</label>
+        <InputText v-model="form.keyword" class="w-full" maxlength="128" placeholder="可选" />
+        <p class="mt-1 text-xs text-slate-400">短信内容包含该关键词时匹配到本项目，留空则不参与匹配</p>
+      </div>
+      <div>
         <label class="mb-2 block text-xs font-bold text-slate-500">单次读取积分</label>
-        <InputNumber v-model="form.price" class="w-full" :min="0" :max="1000000" :use-grouping="false" input-class="w-full" />
+        <InputNumber v-model="form.price" class="w-full" :min="0" :max="1000000" :use-grouping="false" input-class="w-full" placeholder="100积分等于1元"/>
         <p class="mt-1 text-xs text-slate-400">消费者每次读取新短信时扣除的积分</p>
       </div>
       <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button :label="editingId ? '保存' : '创建'" type="submit" :loading="submitting" /></div>
