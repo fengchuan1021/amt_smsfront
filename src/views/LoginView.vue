@@ -64,7 +64,7 @@ async function submit(): Promise<void> {
         invite_code: registerForm.value.invite_code.trim() || undefined,
       });
     }
-    toast.add({ severity: 'success', summary: '登录成功', detail: '欢迎使用 AntSMS', life: 1800 });
+    toast.add({ severity: 'success', summary: '登录成功', detail: '欢迎使用鸭子接码', life: 1800 });
     await router.replace({ name: 'dashboard' });
   } catch (error) {
     showError(error);

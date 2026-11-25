@@ -99,7 +99,7 @@ router.beforeEach(async (to) => {
     if (!roles.includes(currentRole)) return { name: 'dashboard' };
   }
 
-  document.title = to.meta.title ? `AntSMS · ${to.meta.title}` : 'AntSMS';
+  document.title = to.meta.title ? `鸭子接码 · ${to.meta.title}` : '鸭子接码';
   return true;
 });
 
