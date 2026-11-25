@@ -107,14 +107,14 @@ async function submit(): Promise<void> {
 
             <div class="mt-7">
               <h2 class="text-2xl font-extrabold tracking-tight text-slate-900">{{ title }}</h2>
-              <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>
+              <!-- <p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p> -->
             </div>
 
             <Message v-if="errorMessage" severity="error" :closable="false" class="mt-5">{{ errorMessage }}</Message>
 
             <form class="mt-6 space-y-4" @submit.prevent="submit">
               <div v-if="activeTab === 'register'">
-                <label class="mb-2 block text-xs font-bold text-slate-500">身份</label>
+                <!-- <label class="mb-2 block text-xs font-bold text-slate-500">身份</label>
                 <div class="grid grid-cols-2 gap-3">
                   <label class="cursor-pointer rounded-xl border p-3 transition" :class="!registerForm.is_card_dealer ? 'border-indigo-500 bg-indigo-50/70' : 'border-slate-200'">
                     <RadioButton v-model="registerForm.is_card_dealer" :value="false" input-id="consumer" />
@@ -126,7 +126,7 @@ async function submit(): Promise<void> {
                     <span class="ml-2 text-sm font-semibold text-slate-700">卡商</span>
                     <span class="mt-1 block pl-7 text-[11px] text-slate-400">上报短信、赚取积分</span>
                   </label>
-                </div>
+                </div> -->
               </div>
               <div>
                 <label for="username" class="mb-2 block text-xs font-bold text-slate-500">用户名</label>

@@ -1,19 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
+import Paginator from 'primevue/paginator';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
-import type { DealerProject } from '@/types';
+import type { DealerProject, Paged } from '@/types';
 
 const toast = useToast();
 const projects = ref<DealerProject[]>([]);
 const search = ref('');
+const page = ref(1);
+const pageSize = 18;
+const total = ref(0);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const dialogVisible = ref(false);
@@ -21,20 +25,25 @@ const submitting = ref(false);
 const editing = ref<DealerProject | null>(null);
 const form = ref({ status: 1, price: 0 });
 
-const filteredProjects = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return projects.value;
-  return projects.value.filter(
-    (item) => `${item.name} ${item.description || ''}`.toLowerCase().includes(q),
-  );
-});
-
 async function load(): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const data = await request<{ items: DealerProject[] }>('/dealer/projects?page_size=100');
+    const query = new URLSearchParams({
+      page: String(page.value),
+      page_size: String(pageSize),
+    });
+    const q = search.value.trim();
+    if (q) query.set('q', q);
+    const data = await request<Paged<DealerProject>>(`/dealer/projects?${query.toString()}`);
     projects.value = data.items;
+    total.value = data.total;
+    const maxPage = Math.max(1, Math.ceil(data.total / pageSize));
+    if (page.value > maxPage) {
+      page.value = maxPage;
+      await load();
+      return;
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : '请稍后重试';
     error.value = message;
@@ -42,6 +51,11 @@ async function load(): Promise<void> {
   } finally {
     loading.value = false;
   }
+}
+
+function onPage(event: { page: number }): void {
+  page.value = event.page + 1;
+  void load();
 }
 
 function openSettings(item: DealerProject): void {
@@ -73,13 +87,26 @@ const statusOptions = [
   { label: '停用', value: 0 },
 ];
 
+let searchTimer = 0;
+
+watch(search, () => {
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => {
+    page.value = 1;
+    void load();
+  }, 300);
+});
+
 onMounted(load);
 </script>
 
 <template>
   <Card>
     <template #content>
-      <InputText v-model="search" class="w-full sm:max-w-sm" placeholder="搜索项目名称或说明" />
+      <div class="flex w-full items-center gap-3 sm:max-w-md">
+        <InputText v-model="search" class="w-full" placeholder="搜索项目名称或说明" />
+        <span class="shrink-0 text-xs text-slate-400">共 {{ total }} 个</span>
+      </div>
     </template>
   </Card>
 
@@ -90,14 +117,14 @@ onMounted(load);
     <p class="mt-1 text-sm text-slate-400">{{ error }}</p>
     <Button label="重试" icon="pi pi-refresh" severity="secondary" outlined size="small" class="mt-4" @click="load" />
   </div>
-  <div v-else-if="filteredProjects.length === 0" class="mt-5 rounded-2xl border border-slate-200 bg-white py-16 text-center">
+  <div v-else-if="projects.length === 0" class="mt-5 rounded-2xl border border-slate-200 bg-white py-16 text-center">
     <i class="pi pi-folder-open text-4xl text-slate-300" />
     <p class="mt-3 font-semibold text-slate-700">暂无项目</p>
     <p class="mt-1 text-sm text-slate-400">管理员还未创建可用的项目</p>
   </div>
   <div v-else class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
     <article
-      v-for="item in filteredProjects"
+      v-for="item in projects"
       :key="item.id"
       class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
@@ -115,6 +142,14 @@ onMounted(load);
       </div>
     </article>
   </div>
+  <Paginator
+    v-if="!loading && !error && total > pageSize"
+    class="mt-5"
+    :rows="pageSize"
+    :totalRecords="total"
+    :first="(page - 1) * pageSize"
+    @page="onPage"
+  />
 
   <Dialog v-model:visible="dialogVisible" modal :header="`设置 - ${editing?.name || ''}`" :style="{ width: 'min(92vw, 420px)' }">
     <form class="space-y-4" @submit.prevent="save">

@@ -44,6 +44,7 @@ export interface Project {
   price: number;
   status: number;
   keyword: string;
+  sort_order: number;
   created_at: string;
 }
 

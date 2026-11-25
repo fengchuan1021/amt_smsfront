@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
 import InputText from 'primevue/inputtext';
+import Paginator from 'primevue/paginator';
 import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
@@ -15,18 +16,16 @@ import type { Paged, Project } from '@/types';
 const toast = useToast();
 const projects = ref<Project[]>([]);
 const search = ref('');
+const page = ref(1);
+const pageSize = 18;
+const total = ref(0);
 const loading = ref(true);
 const dialogVisible = ref(false);
 const submitting = ref(false);
 const editingId = ref<number | null>(null);
-const form = ref({ name: '', description: '', price: null as number | null, keyword: '' });
+const form = ref({ name: '', description: '', price: null as number | null, keyword: '', sort_order: 0 });
 
 const canCreate = computed(() => role.value === 'admin');
-const filteredProjects = computed(() => {
-  const q = search.value.trim().toLowerCase();
-  if (!q) return projects.value;
-  return projects.value.filter((item) => `${item.name} ${item.description || ''} ${item.keyword || ''}`.toLowerCase().includes(q));
-});
 
 function canManage(): boolean {
   return role.value === 'admin';
@@ -35,8 +34,21 @@ function canManage(): boolean {
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const data = await request<Paged<Project>>('/projects?page_size=100');
+    const query = new URLSearchParams({
+      page: String(page.value),
+      page_size: String(pageSize),
+    });
+    const q = search.value.trim();
+    if (q) query.set('q', q);
+    const data = await request<Paged<Project>>(`/projects?${query.toString()}`);
     projects.value = data.items;
+    total.value = data.total;
+    const maxPage = Math.max(1, Math.ceil(data.total / pageSize));
+    if (page.value > maxPage) {
+      page.value = maxPage;
+      await load();
+      return;
+    }
   } catch (error) {
     toast.add({ severity: 'error', summary: '加载失败', detail: error instanceof Error ? error.message : '请稍后重试', life: 3000 });
   } finally {
@@ -44,15 +56,26 @@ async function load(): Promise<void> {
   }
 }
 
+function onPage(event: { page: number }): void {
+  page.value = event.page + 1;
+  void load();
+}
+
 function openCreate(): void {
   editingId.value = null;
-  form.value = { name: '', description: '', price: null, keyword: '' };
+  form.value = { name: '', description: '', price: null, keyword: '', sort_order: 0 };
   dialogVisible.value = true;
 }
 
 function openEdit(item: Project): void {
   editingId.value = item.id;
-  form.value = { name: item.name, description: item.description || '', price: item.price, keyword: item.keyword || '' };
+  form.value = {
+    name: item.name,
+    description: item.description || '',
+    price: item.price,
+    keyword: item.keyword || '',
+    sort_order: item.sort_order ?? 0,
+  };
   dialogVisible.value = true;
 }
 
@@ -63,6 +86,7 @@ async function save(): Promise<void> {
     description: form.value.description.trim() || null,
     price: form.value.price ?? 0,
     keyword: form.value.keyword.trim(),
+    sort_order: form.value.sort_order ?? 0,
   };
   try {
     if (editingId.value) {
@@ -102,6 +126,16 @@ async function remove(item: Project): Promise<void> {
   }
 }
 
+let searchTimer = 0;
+
+watch(search, () => {
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => {
+    page.value = 1;
+    void load();
+  }, 300);
+});
+
 onMounted(load);
 </script>
 
@@ -109,21 +143,24 @@ onMounted(load);
   <Card>
     <template #content>
       <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <InputText v-model="search" class="w-full sm:max-w-sm" placeholder="搜索项目名称或说明" />
+        <div class="flex w-full items-center gap-3 sm:max-w-md">
+          <InputText v-model="search" class="w-full" placeholder="搜索项目名称或说明" />
+          <span class="shrink-0 text-xs text-slate-400">共 {{ total }} 个</span>
+        </div>
         <Button v-if="canCreate" label="新建项目" icon="pi pi-plus" @click="openCreate" />
       </div>
     </template>
   </Card>
 
   <div v-if="loading" class="mt-5 rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">加载中…</div>
-  <div v-else-if="filteredProjects.length === 0" class="mt-5 rounded-2xl border border-slate-200 bg-white py-16 text-center">
+  <div v-else-if="projects.length === 0" class="mt-5 rounded-2xl border border-slate-200 bg-white py-16 text-center">
     <i class="pi pi-folder-open text-4xl text-slate-300" />
     <p class="mt-3 font-semibold text-slate-700">暂无项目</p>
     <p class="mt-1 text-sm text-slate-400">还没有任何项目，先创建一个吧</p>
   </div>
   <div v-else class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
     <article
-      v-for="item in filteredProjects"
+      v-for="item in projects"
       :key="item.id"
       class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
@@ -137,7 +174,7 @@ onMounted(load);
       <p class="line-clamp-2 min-h-[40px] text-sm text-slate-500">{{ item.description || '暂无说明' }}</p>
       <div class="mt-auto flex items-center justify-between gap-3 border-t border-dashed border-slate-200 pt-3">
         <div class="text-sm font-extrabold text-indigo-600">{{ item.price }} <span class="text-xs font-semibold text-slate-400">积分/次</span></div>
-        <div class="truncate text-xs text-slate-400">关键词 {{ item.keyword || '未设置' }}</div>
+        <div class="truncate text-xs text-slate-400">排序 {{ item.sort_order }} · 关键词 {{ item.keyword || '未设置' }}</div>
       </div>
       <div v-if="canManage()" class="flex flex-wrap gap-2">
         <Button label="编辑" severity="secondary" outlined size="small" @click="openEdit(item)" />
@@ -146,6 +183,14 @@ onMounted(load);
       </div>
     </article>
   </div>
+  <Paginator
+    v-if="!loading && total > pageSize"
+    class="mt-5"
+    :rows="pageSize"
+    :totalRecords="total"
+    :first="(page - 1) * pageSize"
+    @page="onPage"
+  />
 
   <Dialog v-model:visible="dialogVisible" modal :header="editingId ? '编辑项目' : '新建项目'" :style="{ width: 'min(92vw, 460px)' }">
     <form class="space-y-4" @submit.prevent="save">
@@ -160,6 +205,11 @@ onMounted(load);
         <label class="mb-2 block text-xs font-bold text-slate-500">单次读取积分</label>
         <InputNumber v-model="form.price" class="w-full" :min="0" :max="1000000" :use-grouping="false" input-class="w-full" placeholder="100积分等于1元"/>
         <p class="mt-1 text-xs text-slate-400">消费者每次读取新短信时扣除的积分</p>
+      </div>
+      <div>
+        <label class="mb-2 block text-xs font-bold text-slate-500">排序</label>
+        <InputNumber v-model="form.sort_order" class="w-full" :min="-1000000" :max="1000000" :use-grouping="false" input-class="w-full" />
+        <p class="mt-1 text-xs text-slate-400">数字越小越靠前</p>
       </div>
       <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button :label="editingId ? '保存' : '创建'" type="submit" :loading="submitting" /></div>
     </form>
