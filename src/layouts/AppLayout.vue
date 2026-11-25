@@ -67,7 +67,7 @@ const selectedAppId = computed(() => {
 
 function iconSrc(app: Project): string {
   if (iconFailed[app.id]) return '/default-app.svg';
-  return `/${encodeURIComponent(app.name)}.png`;
+  return `/appicons/${encodeURIComponent(app.name)}.png`;
 }
 
 function onIconError(id: number): void {
