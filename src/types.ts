@@ -29,7 +29,7 @@ export interface Card {
   device_id: string | null;
   remark: string | null;
   status: number;
-  card_isp: number;
+  card_isp: number | null;
   card_area: number;
   last_seen_at: string | null;
   used_projects?: string | null;
