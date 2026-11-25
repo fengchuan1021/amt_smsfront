@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Dropdown from 'primevue/select';
@@ -9,6 +10,8 @@ import { request } from '@/lib/api';
 import type { LatestResult, AcquirePhoneResult, Paged, Project, ReleasePhoneResult } from '@/types';
 
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 const projects = ref<Project[]>([]);
 const projectId = ref<number | null>(null);
 const phone = ref('');
@@ -38,11 +41,19 @@ let entryCounter = 0;
 const now = ref(Date.now());
 let clockTimer: ReturnType<typeof setInterval> | null = null;
 
+function projectIdFromRoute(): number | null {
+  const raw = route.query.project_id;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const id = Number(value);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return projects.value.some((item) => item.id === id) ? id : null;
+}
+
 async function init(): Promise<void> {
   try {
     const data = await request<Paged<Project>>('/projects?page_size=100');
     projects.value = data.items;
-    projectId.value = data.items[0]?.id ?? null;
+    projectId.value = projectIdFromRoute() ?? data.items[0]?.id ?? null;
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -221,6 +232,21 @@ function stopClock() {
 onUnmounted(() => {
   stopClock();
   for (const entry of acquired.value) stopPolling(entry);
+});
+
+watch(
+  () => route.query.project_id,
+  () => {
+    const id = projectIdFromRoute();
+    if (id != null) projectId.value = id;
+  },
+);
+
+watch(projectId, (id) => {
+  if (route.name !== 'read' || id == null) return;
+  const current = projectIdFromRoute();
+  if (current === id) return;
+  router.replace({ name: 'read', query: { ...route.query, project_id: String(id) } });
 });
 
 onMounted(() => {

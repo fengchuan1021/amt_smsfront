@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
 import Menu from 'primevue/menu';
 import { auth, logout, role } from '@/stores/auth';
 import { initials } from '@/lib/format';
+import { request } from '@/lib/api';
+import type { Paged, Project } from '@/types';
 
 interface NavItem {
   label: string;
@@ -51,6 +53,40 @@ function navigate(to: string): void {
   mobileMenuOpen.value = false;
   router.push(to);
 }
+
+const apps = ref<Project[]>([]);
+const iconFailed = reactive<Record<number, boolean>>({});
+
+const selectedAppId = computed(() => {
+  if (route.name !== 'read') return null;
+  const raw = route.query.project_id;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const id = Number(value);
+  return Number.isFinite(id) ? id : null;
+});
+
+function iconSrc(app: Project): string {
+  if (iconFailed[app.id]) return '/default-app.svg';
+  return `/${encodeURIComponent(app.name)}.png`;
+}
+
+function onIconError(id: number): void {
+  if (iconFailed[id]) return;
+  iconFailed[id] = true;
+}
+
+function openApp(app: Project): void {
+  router.push({ name: 'read', query: { project_id: String(app.id) } });
+}
+
+onMounted(async () => {
+  try {
+    const data = await request<Paged<Project>>('/projects?page_size=30');
+    apps.value = data.items;
+  } catch {
+    apps.value = [];
+  }
+});
 </script>
 
 <template>
@@ -138,11 +174,28 @@ function navigate(to: string): void {
       />
 
       <main class="min-w-0 flex-1">
-        <div class="px-4 py-6 sm:px-6 lg:px-8">
-          <!-- <div class="mx-auto max-w-[1440px]">
-            <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">{{ pageTitle }}</h1>
-            <p class="mt-1 text-sm text-slate-500">{{ pageSubtitle }}</p>
-          </div> -->
+        <div v-if="apps.length" class="px-4 pt-6 sm:px-6 lg:px-8">
+          <div class="mx-auto max-w-[1440px]">
+            <div class="grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+              <button
+                v-for="app in apps"
+                :key="app.id"
+                type="button"
+                class="flex flex-col items-center gap-1.5 rounded-xl px-1 py-2 text-center transition hover:bg-white"
+                :class="selectedAppId === app.id ? 'bg-white ring-2 ring-indigo-200' : ''"
+                :aria-label="app.name"
+                @click="openApp(app)"
+              >
+                <img
+                  :src="iconSrc(app)"
+                  :alt="app.name"
+                  class="h-12 w-12 rounded-2xl object-cover"
+                  @error="onIconError(app.id)"
+                />
+                <span class="line-clamp-2 w-full text-xs font-medium leading-4 text-slate-700">{{ app.name }}</span>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="mx-auto max-w-[1440px] p-4 sm:p-6 lg:p-8">
           <RouterView v-slot="{ Component }">
