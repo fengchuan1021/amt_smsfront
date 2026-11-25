@@ -82,8 +82,8 @@ async function submit(): Promise<void> {
       <section class="brand-gradient relative hidden overflow-hidden p-12 text-white lg:flex lg:flex-col lg:justify-between xl:p-16">
         <div class="absolute -right-36 -top-36 h-[520px] w-[520px] rounded-full bg-white/10 blur-2xl" />
         <div class="flex items-center gap-3 text-xl font-extrabold">
-          <div class="grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-white/15 text-lg backdrop-blur">A</div>
-          AntSMS
+          <!-- <div class="grid h-10 w-10 place-items-center rounded-xl border border-white/30 bg-white/15 text-lg backdrop-blur"></div> -->
+          鸭子接码
         </div>
         <div class="relative max-w-lg">
           <h1 class="text-5xl font-extrabold leading-tight tracking-tight">短信管理，<br />一个平台全部搞定</h1>
