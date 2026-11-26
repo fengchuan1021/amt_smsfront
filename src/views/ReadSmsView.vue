@@ -51,7 +51,7 @@ function projectIdFromRoute(): number | null {
 
 async function init(): Promise<void> {
   try {
-    const data = await request<Paged<Project>>('/projects?page_size=100');
+    const data = await request<Paged<Project>>('/projects?page_size=3000');
     projects.value = data.items;
     projectId.value = projectIdFromRoute() ?? data.items[0]?.id ?? null;
   } catch (error) {
