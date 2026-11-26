@@ -324,9 +324,9 @@ onMounted(load);
         <p class="mt-1 text-sm text-slate-400">点击「添加手机卡」录入你的第一张卡</p>
       </div>
       <div v-else class="overflow-x-auto">
-        <table class="w-full min-w-[1400px] text-left text-sm">
+        <table class="w-full min-w-[1680px] text-left text-sm">
           <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-            <tr><th class="w-12 px-4 py-3"><input type="checkbox" :checked="allVisibleSelected" aria-label="选择当前列表全部手机卡" @change="toggleVisibleSelection" /></th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">运营商</th><th class="px-4 py-3">地区</th><th class="px-4 py-3">设备标识</th><th class="px-4 py-3">分组</th><th class="px-4 py-3">备注</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">最后上报</th><th class="px-4 py-3">已用项目</th><th class="px-4 py-3">操作</th></tr>
+            <tr><th class="w-12 px-4 py-3"><input type="checkbox" :checked="allVisibleSelected" aria-label="选择当前列表全部手机卡" @change="toggleVisibleSelection" /></th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">运营商</th><th class="px-4 py-3">地区</th><th class="px-4 py-3">设备标识</th><th class="px-4 py-3">分组</th><th class="px-4 py-3">备注</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">最后上报</th><th class="px-4 py-3">已用项目</th><th class="min-w-[280px] px-4 py-3">操作</th></tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="item in filteredCards" :key="item.id" class="transition hover:bg-slate-50">
@@ -346,7 +346,7 @@ onMounted(load);
                   <Tag v-for="name in item.used_projects.split('、')" :key="name" :value="name" severity="info" />
                 </span>
               </td>
-              <td class="whitespace-nowrap px-4 py-4">
+              <td class="min-w-[280px] whitespace-nowrap px-4 py-4">
                 <Button label="编辑" text size="small" @click="openEdit(item)" />
                 <Button label="移动分组" text size="small" @click="openMove(item)" />
                 <Button label="删除" severity="danger" text size="small" @click="removeOne(item)" />
