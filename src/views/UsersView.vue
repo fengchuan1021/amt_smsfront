@@ -8,7 +8,7 @@ import InputText from 'primevue/inputtext';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
-import { fmtDate } from '@/lib/format';
+import { fmtDate, formatYuan, yuanToPoints } from '@/lib/format';
 import type { AdminUser, Paged } from '@/types';
 
 const toast = useToast();
@@ -18,7 +18,7 @@ const loading = ref(true);
 const dialogVisible = ref(false);
 const submitting = ref(false);
 const currentUser = ref<AdminUser | null>(null);
-const rechargeForm = ref({ points: 100, remark: '' });
+const rechargeForm = ref({ yuan: 1, remark: '' });
 
 const filteredUsers = computed(() => {
   const q = search.value.trim().toLowerCase();
@@ -40,7 +40,7 @@ async function load(): Promise<void> {
 
 function openRecharge(user: AdminUser): void {
   currentUser.value = user;
-  rechargeForm.value = { points: 100, remark: '' };
+  rechargeForm.value = { yuan: 1, remark: '' };
   dialogVisible.value = true;
 }
 
@@ -50,7 +50,7 @@ async function recharge(): Promise<void> {
   try {
     await request(`/admin/users/${currentUser.value.id}/recharge`, {
       method: 'POST',
-      body: { points: Number(rechargeForm.value.points) || 0, remark: rechargeForm.value.remark.trim() || undefined },
+      body: { points: yuanToPoints(rechargeForm.value.yuan), remark: rechargeForm.value.remark.trim() || undefined },
     });
     dialogVisible.value = false;
     toast.add({ severity: 'success', summary: '充值成功', life: 2000 });
@@ -100,12 +100,12 @@ onMounted(load);
       <div v-else-if="!filteredUsers.length" class="py-14 text-center"><i class="pi pi-users text-4xl text-slate-300" /><p class="mt-3 font-semibold text-slate-700">没有用户</p><p class="mt-1 text-sm text-slate-400">没有匹配的用户</p></div>
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[900px] text-left text-sm">
-          <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400"><tr><th class="px-4 py-3">用户名</th><th class="px-4 py-3">角色</th><th class="px-4 py-3">余额</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">邀请码</th><th class="px-4 py-3">注册时间</th><th class="px-4 py-3">操作</th></tr></thead>
+          <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400"><tr><th class="px-4 py-3">用户名</th><th class="px-4 py-3">角色</th><th class="px-4 py-3">余额（元）</th><th class="px-4 py-3">状态</th><th class="px-4 py-3">邀请码</th><th class="px-4 py-3">注册时间</th><th class="px-4 py-3">操作</th></tr></thead>
           <tbody class="divide-y divide-slate-100">
             <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50">
               <td class="px-4 py-4 font-semibold text-slate-800">{{ user.username }}</td>
               <td class="px-4 py-4"><Tag v-if="user.is_admin" value="管理员" severity="warn" /><Tag v-else-if="user.is_card_dealer" value="卡商" severity="info" /><Tag v-else value="消费者" severity="secondary" /></td>
-              <td class="px-4 py-4 font-semibold text-slate-800">{{ user.balance }}</td>
+              <td class="px-4 py-4 font-semibold text-slate-800">{{ formatYuan(user.balance) }}</td>
               <td class="px-4 py-4"><Tag :value="user.status === 1 ? '正常' : '禁用'" :severity="user.status === 1 ? 'success' : 'danger'" /></td>
               <td class="px-4 py-4 font-mono text-xs text-slate-500">{{ user.invite_code }}</td>
               <td class="whitespace-nowrap px-4 py-4 text-slate-500">{{ fmtDate(user.created_at) }}</td>
@@ -119,7 +119,7 @@ onMounted(load);
 
   <Dialog v-model:visible="dialogVisible" modal :header="`为 ${currentUser?.username ?? ''} 充值`" :style="{ width: 'min(92vw, 420px)' }">
     <form class="space-y-4" @submit.prevent="recharge">
-      <div><label class="mb-2 block text-xs font-bold text-slate-500">充值积分</label><InputNumber v-model="rechargeForm.points" class="w-full" :min="1" :max="100000000" :use-grouping="false" input-class="w-full" /></div>
+      <div><label class="mb-2 block text-xs font-bold text-slate-500">充值金额（元）</label><InputNumber v-model="rechargeForm.yuan" class="w-full" :min="0.01" :max="1000000" :min-fraction-digits="2" :max-fraction-digits="2" :step="0.01" :use-grouping="false" input-class="w-full" /></div>
       <div><label class="mb-2 block text-xs font-bold text-slate-500">备注</label><InputText v-model="rechargeForm.remark" class="w-full" placeholder="可选" /></div>
       <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button label="确认充值" type="submit" :loading="submitting" /></div>
     </form>

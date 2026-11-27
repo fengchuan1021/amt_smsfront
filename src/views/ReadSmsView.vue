@@ -7,6 +7,7 @@ import Dropdown from 'primevue/select';
 import InputText from 'primevue/inputtext';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
+import { formatYuan } from '@/lib/format';
 import type { LatestResult, AcquirePhoneResult, Paged, Project, ReleasePhoneResult } from '@/types';
 
 const toast = useToast();
@@ -277,7 +278,7 @@ onMounted(() => {
         <form class="space-y-5" @submit.prevent="acquirephone">
           <div class="flex items-center gap-3">
             <label class="w-16 shrink-0 text-xs font-bold text-slate-500">选择项目</label>
-            <Dropdown v-model="projectId" :options="projects" option-label="name" option-value="id" placeholder="选择项目" filter filter-placeholder="搜索项目" class="flex-1"><template #option="slotProps"><div class="flex w-full items-center justify-between"><span>{{ slotProps.option.name }}</span><span class="text-xs text-slate-400">{{ slotProps.option.price }} 积分/次</span></div></template></Dropdown>
+            <Dropdown v-model="projectId" :options="projects" option-label="name" option-value="id" placeholder="选择项目" filter filter-placeholder="搜索项目" class="flex-1"><template #option="slotProps"><div class="flex w-full items-center justify-between"><span>{{ slotProps.option.name }}</span><span class="text-xs text-slate-400">{{ formatYuan(slotProps.option.price) }} 元/次</span></div></template></Dropdown>
           </div>
           <div class="flex items-center gap-3">
             <label class="w-16 shrink-0 text-xs font-bold text-slate-500">指定手机号</label>

@@ -5,7 +5,7 @@ import Button from 'primevue/button';
 import Avatar from 'primevue/avatar';
 import Menu from 'primevue/menu';
 import { auth, logout, role } from '@/stores/auth';
-import { initials } from '@/lib/format';
+import { formatYuan, initials } from '@/lib/format';
 import { request } from '@/lib/api';
 import type { Paged, Project } from '@/types';
 
@@ -23,7 +23,7 @@ const mobileMenuOpen = ref(false);
 
 const navItems: NavItem[] = [
   { label: '概览', icon: 'pi pi-home', to: '/dashboard' },
-  { label: '充值积分', icon: 'pi pi-wallet', to: '/recharge' },
+  { label: '充值', icon: 'pi pi-wallet', to: '/recharge' },
   { label: '手机卡', icon: 'pi pi-mobile', to: '/cards', roles: ['dealer', 'admin'] },
   { label: '项目管理', icon: 'pi pi-folder', to: '/projects', roles: ['admin'] },
   { label: '项目', icon: 'pi pi-folder', to: '/dealer/projects', roles: ['dealer'] },
@@ -277,7 +277,7 @@ onUnmounted(() => {
             @click="navigate('/recharge')"
           >
             <i class="pi pi-wallet text-xs" />
-            <span>{{ auth.user?.balance ?? 0 }} 积分</span>
+            <span>{{ formatYuan(auth.user?.balance) }} 元</span>
           </button>
           <div class="hidden text-right sm:block">
             <div class="text-sm font-semibold text-slate-800">{{ auth.user?.username }}</div>

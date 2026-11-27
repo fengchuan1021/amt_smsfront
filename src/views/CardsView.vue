@@ -10,7 +10,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
-import { fmtDate } from '@/lib/format';
+import { fmtDate, formatYuan, pointsToYuan, yuanToPoints } from '@/lib/format';
 import type { Card as PhoneCard, CardGroup, Paged, Project } from '@/types';
 
 const ISP_OPTIONS = [
@@ -83,7 +83,7 @@ function customPriceTitle(item: PhoneCard): string {
   const map = projectsPriceOf(item);
   if (!map.size) return '未设置项目自定义价格';
   return [...map.entries()]
-    .map(([id, price]) => `${projectNameMap.value.get(id) ?? `项目 ${id}`}: ${price}`)
+    .map(([id, price]) => `${projectNameMap.value.get(id) ?? `项目 ${id}`}: ${formatYuan(price)} 元`)
     .join('、');
 }
 
@@ -96,7 +96,8 @@ function openPriceFor(ids: number[]): void {
   });
   for (const project of projects.value) {
     const values = new Set(maps.map((map) => map.get(project.id)));
-    priceForm.value[project.id] = values.size === 1 ? values.values().next().value ?? null : null;
+    const raw = values.size === 1 ? values.values().next().value : undefined;
+    priceForm.value[project.id] = raw == null ? null : pointsToYuan(raw);
   }
   priceDialogVisible.value = true;
 }
@@ -105,7 +106,7 @@ async function savePrices(): Promise<void> {
   if (!priceTargetIds.value.length) return;
   const prices = projects.value
     .filter((project) => priceForm.value[project.id] != null)
-    .map((project) => ({ project_id: project.id, price: priceForm.value[project.id] as number }));
+    .map((project) => ({ project_id: project.id, price: yuanToPoints(priceForm.value[project.id] as number) }));
   submitting.value = true;
   try {
     await request('/cards/bulk/prices', { method: 'POST', body: { ids: priceTargetIds.value, prices } });
@@ -388,9 +389,9 @@ onMounted(load);
         <div v-for="project in projects" :key="project.id" class="flex items-center justify-between gap-3 text-sm border-b border-slate-100 pb-2 last:border-0">
           <span class="text-slate-700">{{ project.name }}</span>
           <div class="w-40">
-            <InputNumber v-model="priceForm[project.id]" :min="0" :max="1000000" :use-grouping="false" :placeholder="`默认 ${project.price}`" class="w-full" :aria-label="`${project.name} 自定义价格`" />
+            <InputNumber v-model="priceForm[project.id]" :min="0" :max="10000" :min-fraction-digits="2" :max-fraction-digits="2" :step="0.01" :use-grouping="false" :placeholder="`默认 ${formatYuan(project.price)} 元`" class="w-full" :aria-label="`${project.name} 自定义价格`" />
           </div>
-          <span class="text-xs text-slate-400">{{ project.price }} 积分</span>
+          <span class="text-xs text-slate-400">{{ formatYuan(project.price) }} 元</span>
         </div>
       </div>
       <div class="flex justify-end gap-2">

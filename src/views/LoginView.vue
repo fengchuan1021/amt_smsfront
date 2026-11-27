@@ -87,11 +87,11 @@ async function submit(): Promise<void> {
         </div>
         <div class="relative max-w-lg">
           <h1 class="text-5xl font-extrabold leading-tight tracking-tight">短信管理，<br />一个平台全部搞定</h1>
-          <p class="mt-6 text-base leading-7 text-white/75">面向卡商与消费者的短信聚合平台。手机端一键上报，按项目与号码实时读取最新短信，积分自动结算。</p>
+          <p class="mt-6 text-base leading-7 text-white/75">面向卡商与消费者的短信聚合平台。手机端一键上报，按项目与号码实时读取最新短信，按元自动结算。</p>
           <div class="mt-9 space-y-4 text-sm text-white/90">
             <div class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/15">✦</span>手机端上报短信，设备与号码双重校验</div>
             <div class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/15">◈</span>按手机号 + 项目读取最新一条，秒级响应</div>
-            <div class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/15">✧</span>积分计费，重复读取自动去重不重复扣费</div>
+            <div class="flex items-center gap-3"><span class="grid h-8 w-8 place-items-center rounded-lg bg-white/15">✧</span>按元计费，重复读取自动去重不重复扣费</div>
           </div>
         </div>
         <div class="text-sm text-white/55">Powered by Cloudflare Workers · D1</div>
@@ -119,12 +119,12 @@ async function submit(): Promise<void> {
                   <label class="cursor-pointer rounded-xl border p-3 transition" :class="!registerForm.is_card_dealer ? 'border-indigo-500 bg-indigo-50/70' : 'border-slate-200'">
                     <RadioButton v-model="registerForm.is_card_dealer" :value="false" input-id="consumer" />
                     <span class="ml-2 text-sm font-semibold text-slate-700">消费者</span>
-                    <span class="mt-1 block pl-7 text-[11px] text-slate-400">读取短信、消耗积分</span>
+                    <span class="mt-1 block pl-7 text-[11px] text-slate-400">读取短信、按元计费</span>
                   </label>
                   <label class="cursor-pointer rounded-xl border p-3 transition" :class="registerForm.is_card_dealer ? 'border-indigo-500 bg-indigo-50/70' : 'border-slate-200'">
                     <RadioButton v-model="registerForm.is_card_dealer" :value="true" input-id="dealer" />
                     <span class="ml-2 text-sm font-semibold text-slate-700">卡商</span>
-                    <span class="mt-1 block pl-7 text-[11px] text-slate-400">上报短信、赚取积分</span>
+                    <span class="mt-1 block pl-7 text-[11px] text-slate-400">上报短信、赚取收益</span>
                   </label>
                 </div> -->
               </div>

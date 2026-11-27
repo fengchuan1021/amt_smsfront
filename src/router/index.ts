@@ -30,7 +30,7 @@ const router = createRouter({
           path: 'recharge',
           name: 'recharge',
           component: () => import('@/views/RechargeView.vue'),
-          meta: { title: '充值积分', subtitle: '使用 USDT 等方式为账户充值积分' },
+          meta: { title: '充值', subtitle: '使用 USDT 等方式为账户充值' },
         },
         {
           path: 'cards',
@@ -66,7 +66,7 @@ const router = createRouter({
           path: 'reads',
           name: 'reads',
           component: () => import('@/views/ReadsView.vue'),
-          meta: { title: '我的消费', subtitle: '查看你读取短信的积分消耗', roles: ['consumer'] },
+          meta: { title: '我的消费', subtitle: '查看你读取短信的费用', roles: ['consumer'] },
         },
         {
           path: 'users',

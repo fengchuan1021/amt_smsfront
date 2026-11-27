@@ -6,7 +6,7 @@ import InputText from 'primevue/inputtext';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
-import { fmtDate } from '@/lib/format';
+import { fmtDate, formatYuan } from '@/lib/format';
 import type { Paged, Project, Sms } from '@/types';
 
 const toast = useToast();
@@ -65,8 +65,8 @@ onMounted(init);
       <div v-else-if="!items.length" class="py-14 text-center"><i class="pi pi-comments text-4xl text-slate-300" /><p class="mt-3 font-semibold text-slate-700">暂无短信记录</p><p class="mt-1 text-sm text-slate-400">符合条件的短信还没有上报记录</p></div>
       <div v-else class="overflow-x-auto">
         <table class="w-full min-w-[900px] text-left text-sm">
-          <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400"><tr><th class="px-4 py-3">上报时间</th><th class="px-4 py-3">项目</th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">短信内容</th><th class="px-4 py-3">卡商</th><th class="px-4 py-3">消费用户</th><th class="px-4 py-3">积分</th></tr></thead>
-          <tbody class="divide-y divide-slate-100"><tr v-for="item in items" :key="item.id" class="hover:bg-slate-50"><td class="whitespace-nowrap px-4 py-4 text-slate-500">{{ fmtDate(item.created_at) }}</td><td class="px-4 py-4"><Tag :value="item.project_name || `#${item.project_id}`" severity="info" /></td><td class="px-4 py-4 font-mono font-semibold">{{ item.phone }}</td><td class="max-w-[320px] truncate px-4 py-4 text-slate-600" :title="item.content">{{ item.content }}</td><td class="px-4 py-4 text-slate-500">#{{ item.user_id }}</td><td class="px-4 py-4 text-slate-500">{{ item.consumer_user_id ? `#${item.consumer_user_id}` : '-' }}</td><td class="px-4 py-4 font-semibold">{{ item.consumed_points }}</td></tr></tbody>
+          <thead class="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400"><tr><th class="px-4 py-3">上报时间</th><th class="px-4 py-3">项目</th><th class="px-4 py-3">手机号</th><th class="px-4 py-3">短信内容</th><th class="px-4 py-3">卡商</th><th class="px-4 py-3">消费用户</th><th class="px-4 py-3">金额（元）</th></tr></thead>
+          <tbody class="divide-y divide-slate-100"><tr v-for="item in items" :key="item.id" class="hover:bg-slate-50"><td class="whitespace-nowrap px-4 py-4 text-slate-500">{{ fmtDate(item.created_at) }}</td><td class="px-4 py-4"><Tag :value="item.project_name || `#${item.project_id}`" severity="info" /></td><td class="px-4 py-4 font-mono font-semibold">{{ item.phone }}</td><td class="max-w-[320px] truncate px-4 py-4 text-slate-600" :title="item.content">{{ item.content }}</td><td class="px-4 py-4 text-slate-500">#{{ item.user_id }}</td><td class="px-4 py-4 text-slate-500">{{ item.consumer_user_id ? `#${item.consumer_user_id}` : '-' }}</td><td class="px-4 py-4 font-semibold">{{ formatYuan(item.consumed_points) }}</td></tr></tbody>
         </table>
       </div>
     </template>

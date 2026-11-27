@@ -6,7 +6,7 @@ import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import QRCode from 'qrcode';
 import { ApiError, request } from '@/lib/api';
-import { fmtDate } from '@/lib/format';
+import { fmtDate, formatYuan, pointsToYuan, yuanToPoints } from '@/lib/format';
 import { auth, setBalance } from '@/stores/auth';
 import type { Paged, RechargeChannel, RechargeOrder } from '@/types';
 
@@ -42,15 +42,21 @@ let pollTimer = 0;
 
 const selected = computed(() => channels.value.find((item) => item.code === selectedCode.value) ?? null);
 const enabledChannels = computed(() => channels.value.filter((item) => item.status === 1));
+const yuanAmount = computed({
+  get: () => pointsToYuan(points.value),
+  set: (value: number | null) => {
+    points.value = yuanToPoints(value ?? 0);
+  },
+});
 
 const rateText = computed(() => {
   const channel = selected.value;
   if (!channel || channel.status !== 1) return '';
   if (channel.currency === 'CNY') {
-    return `${channel.points_per_currency} 积分 = 1 元，提交后按实时汇率折合 USDT-TRC20`;
+    return '金额以元计算，提交后按实时汇率折合 USDT-TRC20';
   }
   if (channel.currency === 'USD') {
-    return `${channel.points_per_currency} 积分 = 1 USDT`;
+    return `${formatYuan(channel.points_per_currency)} 元 = 1 USDT`;
   }
   return channel.remark || '';
 });
@@ -81,6 +87,11 @@ watch(
     }
   },
 );
+
+function displayRemark(remark?: string | null): string {
+  if (!remark) return '';
+  return remark.replace(/[，,]?\s*\d+\s*积分\s*=\s*1\s*元/g, '');
+}
 
 function statusOf(status: number): { label: string; severity: 'success' | 'info' | 'warn' | 'danger' | 'secondary' } {
   return STATUS_LABEL[status] ?? { label: '未知', severity: 'secondary' };
@@ -157,7 +168,7 @@ async function refreshActive(): Promise<void> {
     active.value = data.order;
     if (data.order.status === 1 && previous !== 1) {
       if (data.order.balance != null) setBalance(data.order.balance);
-      toast.add({ severity: 'success', summary: '充值到账', detail: `已增加 ${data.order.points} 积分`, life: 2500 });
+      toast.add({ severity: 'success', summary: '充值到账', detail: `已增加 ${formatYuan(data.order.points)} 元`, life: 2500 });
       await loadOrders();
     }
     if (data.order.status !== 0) stopPolling();
@@ -173,8 +184,8 @@ async function createOrder(): Promise<void> {
   if (!Number.isInteger(value) || value < channel.min_points || value > channel.max_points) {
     toast.add({
       severity: 'warn',
-      summary: '积分数量无效',
-      detail: `请输入 ${channel.min_points} 到 ${channel.max_points} 之间的整数`,
+      summary: '充值金额无效',
+      detail: `请输入 ${formatYuan(channel.min_points)} 到 ${formatYuan(channel.max_points)} 元`,
       life: 2500,
     });
     return;
@@ -222,14 +233,6 @@ function choosePreset(value: number): void {
   points.value = value;
 }
 
-function yuanLabel(value: number): string {
-  const channel = selected.value;
-  if (!channel || channel.currency !== 'CNY' || !(channel.points_per_currency > 0)) return '';
-  const yuan = value / channel.points_per_currency;
-  const text = Number.isInteger(yuan) ? String(yuan) : yuan.toFixed(2);
-  return `${text} 元`;
-}
-
 function openOrder(order: RechargeOrder): void {
   if (order.status !== 0) return;
   active.value = order;
@@ -253,8 +256,8 @@ onUnmounted(() => {
   <div class="space-y-6">
     <section class="grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
       <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">当前积分</div>
-        <div class="mt-3 text-4xl font-extrabold tracking-tight text-slate-900">{{ auth.user?.balance ?? 0 }}</div>
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">当前余额</div>
+        <div class="mt-3 text-4xl font-extrabold tracking-tight text-slate-900">{{ formatYuan(auth.user?.balance) }} 元</div>
         <p class="mt-2 text-sm text-slate-500">充值到账后可用于读取短信。</p>
       </div>
 
@@ -280,7 +283,7 @@ onUnmounted(() => {
               <Tag :value="channel.status === 1 ? '可用' : '即将开放'" :severity="channel.status === 1 ? 'success' : 'secondary'" />
             </div>
             <div class="mt-3 font-bold">{{ channel.name }}</div>
-            <div class="mt-1 text-xs leading-5 text-slate-400">{{ channel.remark || ' ' }}</div>
+            <div class="mt-1 text-xs leading-5 text-slate-400">{{ displayRemark(channel.remark) || ' ' }}</div>
           </button>
         </div>
       </div>
@@ -304,7 +307,7 @@ onUnmounted(() => {
         </div>
         <div class="space-y-4">
           <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-            请使用 TRC20 网络转账下方精确金额。金额不一致时无法自动到账。订单 {{ formatAmount(active) }}，到账 {{ active.points }} 积分。
+            请使用 TRC20 网络转账下方精确金额。金额不一致时无法自动到账。订单 {{ formatAmount(active) }}，到账 {{ formatYuan(active.points) }} 元。
           </div>
           <div>
             <div class="text-xs font-bold text-slate-400">应付 USDT</div>
@@ -342,7 +345,7 @@ onUnmounted(() => {
 
       <div v-else class="mt-6 rounded-2xl bg-slate-50 px-5 py-6">
         <p class="font-semibold text-slate-800">
-          {{ active.status === 1 ? `已到账 ${active.points} 积分` : statusOf(active.status).label }}
+          {{ active.status === 1 ? `已到账 ${formatYuan(active.points)} 元` : statusOf(active.status).label }}
         </p>
         <p v-if="active.tx_id" class="mt-2 break-all font-mono text-xs text-slate-400">交易哈希 {{ active.tx_id }}</p>
         <Button class="mt-4" label="继续充值" @click="active = null" />
@@ -361,17 +364,20 @@ onUnmounted(() => {
           :class="points === preset ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-indigo-200'"
           @click="choosePreset(preset)"
         >
-          {{ preset }} 积分<span v-if="yuanLabel(preset)" class="ml-1 text-xs font-medium opacity-70">{{ yuanLabel(preset) }}</span>
+          {{ formatYuan(preset) }} 元
         </button>
       </div>
       <div class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end">
         <div class="w-full sm:max-w-xs">
-          <label class="mb-2 block text-xs font-bold text-slate-500">自定义积分</label>
+          <label class="mb-2 block text-xs font-bold text-slate-500">自定义金额（元）</label>
           <InputNumber
-            v-model="points"
+            v-model="yuanAmount"
             class="w-full"
-            :min="selected?.min_points ?? 100"
-            :max="selected?.max_points ?? 1000000"
+            :min="pointsToYuan(selected?.min_points ?? 100)"
+            :max="pointsToYuan(selected?.max_points ?? 1000000)"
+            :min-fraction-digits="2"
+            :max-fraction-digits="2"
+            :step="0.01"
             :use-grouping="false"
             input-class="w-full"
             :disabled="!enabledChannels.length"
@@ -401,7 +407,7 @@ onUnmounted(() => {
               <th class="px-4 py-3">时间</th>
               <th class="px-4 py-3">订单号</th>
               <th class="px-4 py-3">渠道</th>
-              <th class="px-4 py-3">积分</th>
+              <th class="px-4 py-3">金额（元）</th>
               <th class="px-4 py-3">应付</th>
               <th class="px-4 py-3">状态</th>
             </tr>
@@ -411,7 +417,7 @@ onUnmounted(() => {
               <td class="whitespace-nowrap px-4 py-4 text-slate-500">{{ fmtDate(order.created_at) }}</td>
               <td class="px-4 py-4 font-mono text-xs text-slate-500">{{ order.order_no }}</td>
               <td class="px-4 py-4 font-semibold text-slate-800">{{ order.channel_name || order.channel_code }}</td>
-              <td class="px-4 py-4 font-semibold">{{ order.points }}</td>
+              <td class="px-4 py-4 font-semibold">{{ formatYuan(order.points) }}</td>
               <td class="px-4 py-4 text-slate-600">
                 <span v-if="order.actual_amount != null">{{ formatUsdt(order.actual_amount) }} USDT</span>
                 <span v-else>{{ formatAmount(order) }}</span>

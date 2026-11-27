@@ -7,7 +7,7 @@ import Skeleton from 'primevue/skeleton';
 import { useToast } from 'primevue/usetoast';
 import StatCard from '@/components/StatCard.vue';
 import { request } from '@/lib/api';
-import { fmtDate } from '@/lib/format';
+import { fmtDate, formatYuan } from '@/lib/format';
 import { auth, role, setBalance } from '@/stores/auth';
 import type { Stats } from '@/types';
 
@@ -51,22 +51,22 @@ const cards = computed<StatItem[]>(() => {
   }
   if (role.value === 'dealer') {
     return [
-      { label: '账户积分', value: s.balance, icon: 'pi pi-wallet', accent: true },
+      { label: '账户余额', value: `${formatYuan(s.balance)} 元`, icon: 'pi pi-wallet', accent: true },
       { label: '手机卡', value: s.cards ?? 0, icon: 'pi pi-mobile' },
       { label: '已上报短信', value: s.sms ?? 0, icon: 'pi pi-comments' },
-      { label: '累计收入', value: s.income ?? 0, icon: 'pi pi-chart-line' },
+      { label: '累计收入', value: `${formatYuan(s.income ?? 0)} 元`, icon: 'pi pi-chart-line' },
     ];
   }
   return [
-    { label: '账户积分', value: s.balance, icon: 'pi pi-wallet', accent: true },
+    { label: '账户余额', value: `${formatYuan(s.balance)} 元`, icon: 'pi pi-wallet', accent: true },
     { label: '已读短信', value: s.reads ?? 0, icon: 'pi pi-envelope' },
-    { label: '累计消耗', value: s.spent ?? 0, icon: 'pi pi-chart-line' },
+    { label: '累计消耗', value: `${formatYuan(s.spent ?? 0)} 元`, icon: 'pi pi-chart-line' },
   ];
 });
 
 const quickLinks = computed(() => {
   const links: Array<{ label: string; to: string; icon: string }> = [
-    { label: '充值积分', to: '/recharge', icon: 'pi pi-wallet' },
+    { label: '充值', to: '/recharge', icon: 'pi pi-wallet' },
   ];
   if (role.value === 'dealer' || role.value === 'admin') {
     links.push({ label: '管理手机卡', to: '/cards', icon: 'pi pi-mobile' });
@@ -117,7 +117,7 @@ async function copyInvite(): Promise<void> {
           </div>
           <div>
             <div class="text-xs font-semibold text-slate-400">账户余额</div>
-            <div class="mt-1 font-semibold text-slate-800">{{ auth.user?.balance ?? 0 }} 积分</div>
+            <div class="mt-1 font-semibold text-slate-800">{{ formatYuan(auth.user?.balance) }} 元</div>
           </div>
           <div>
             <div class="text-xs font-semibold text-slate-400">状态</div>

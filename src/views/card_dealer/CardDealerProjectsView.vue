@@ -10,6 +10,7 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
+import { formatYuan, pointsToYuan, yuanToPoints } from '@/lib/format';
 import type { DealerProject, Paged } from '@/types';
 
 const toast = useToast();
@@ -60,7 +61,7 @@ function onPage(event: { page: number }): void {
 
 function openSettings(item: DealerProject): void {
   editing.value = item;
-  form.value = { status: item.status, price: item.price };
+  form.value = { status: item.status, price: pointsToYuan(item.price) };
   dialogVisible.value = true;
 }
 
@@ -70,7 +71,7 @@ async function save(): Promise<void> {
   try {
     await request(`/dealer/projects/${editing.value.project_id}`, {
       method: 'PATCH',
-      body: { status: form.value.status, price: form.value.price },
+      body: { status: form.value.status, price: yuanToPoints(form.value.price) },
     });
     toast.add({ severity: 'success', summary: '已保存', detail: '项目设置已更新', life: 2000 });
     dialogVisible.value = false;
@@ -137,7 +138,7 @@ onMounted(load);
       </div>
       <p class="line-clamp-2 min-h-[40px] text-sm text-slate-500">{{ item.description || '暂无说明' }}</p>
       <div class="mt-auto flex items-center justify-between border-t border-dashed border-slate-200 pt-3">
-        <div class="text-sm font-extrabold text-indigo-600">{{ item.price }} <span class="text-xs font-semibold text-slate-400">积分/次</span></div>
+        <div class="text-sm font-extrabold text-indigo-600">{{ formatYuan(item.price) }} <span class="text-xs font-semibold text-slate-400">元/次</span></div>
         <Button label="设置" icon="pi pi-cog" size="small" outlined @click="openSettings(item)" />
       </div>
     </article>
@@ -158,8 +159,8 @@ onMounted(load);
         <Select v-model="form.status" :options="statusOptions" option-label="label" option-value="value" :show-clear="false" class="w-full" />
       </div>
       <div>
-        <label class="mb-2 block text-xs font-bold text-slate-500">单价（积分/次）</label>
-        <InputNumber v-model="form.price" class="w-full" :min="0" :max="1000000" :use-grouping="false" input-class="w-full" />
+        <label class="mb-2 block text-xs font-bold text-slate-500">单价（元/次）</label>
+        <InputNumber v-model="form.price" class="w-full" :min="0" :max="10000" :min-fraction-digits="2" :max-fraction-digits="2" :step="0.01" :use-grouping="false" input-class="w-full" />
         <p class="mt-1 text-xs text-slate-400">留空或设为 0 表示使用项目默认单价</p>
       </div>
       <div class="flex justify-end gap-2 pt-2"><Button label="取消" severity="secondary" text type="button" @click="dialogVisible = false" /><Button :label="`${editing?.override_id ? '更新' : '设置'}`" type="submit" :loading="submitting" /></div>

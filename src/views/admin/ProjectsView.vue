@@ -10,6 +10,7 @@ import Tag from 'primevue/tag';
 import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
 import { request } from '@/lib/api';
+import { formatYuan, pointsToYuan, yuanToPoints } from '@/lib/format';
 import { role } from '@/stores/auth';
 import type { Paged, Project } from '@/types';
 
@@ -72,7 +73,7 @@ function openEdit(item: Project): void {
   form.value = {
     name: item.name,
     description: item.description || '',
-    price: item.price,
+    price: pointsToYuan(item.price),
     keyword: item.keyword || '',
     sort_order: item.sort_order ?? 0,
   };
@@ -84,7 +85,7 @@ async function save(): Promise<void> {
   const payload = {
     name: form.value.name.trim(),
     description: form.value.description.trim() || null,
-    price: form.value.price ?? 0,
+    price: yuanToPoints(form.value.price ?? 0),
     keyword: form.value.keyword.trim(),
     sort_order: form.value.sort_order ?? 0,
   };
@@ -173,7 +174,7 @@ onMounted(load);
       </div>
       <p class="line-clamp-2 min-h-[40px] text-sm text-slate-500">{{ item.description || '暂无说明' }}</p>
       <div class="mt-auto flex items-center justify-between gap-3 border-t border-dashed border-slate-200 pt-3">
-        <div class="text-sm font-extrabold text-indigo-600">{{ item.price }} <span class="text-xs font-semibold text-slate-400">积分/次</span></div>
+        <div class="text-sm font-extrabold text-indigo-600">{{ formatYuan(item.price) }} <span class="text-xs font-semibold text-slate-400">元/次</span></div>
         <div class="truncate text-xs text-slate-400">排序 {{ item.sort_order }} · 关键词 {{ item.keyword || '未设置' }}</div>
       </div>
       <div v-if="canManage()" class="flex flex-wrap gap-2">
@@ -202,9 +203,9 @@ onMounted(load);
         <p class="mt-1 text-xs text-slate-400">短信内容包含该关键词时匹配到本项目，留空则不参与匹配</p>
       </div>
       <div>
-        <label class="mb-2 block text-xs font-bold text-slate-500">单次读取积分</label>
-        <InputNumber v-model="form.price" class="w-full" :min="0" :max="1000000" :use-grouping="false" input-class="w-full" placeholder="100积分等于1元"/>
-        <p class="mt-1 text-xs text-slate-400">消费者每次读取新短信时扣除的积分</p>
+        <label class="mb-2 block text-xs font-bold text-slate-500">单次读取金额（元）</label>
+        <InputNumber v-model="form.price" class="w-full" :min="0" :max="10000" :min-fraction-digits="2" :max-fraction-digits="2" :step="0.01" :use-grouping="false" input-class="w-full" placeholder="例如 1.00" />
+        <p class="mt-1 text-xs text-slate-400">消费者每次读取新短信时扣除的金额</p>
       </div>
       <div>
         <label class="mb-2 block text-xs font-bold text-slate-500">排序</label>
