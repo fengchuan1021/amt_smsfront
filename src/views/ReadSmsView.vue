@@ -267,7 +267,8 @@ onMounted(() => {
             <li>我们不持有号码，号码源自提供商，所以号码随时失效，重要业务切勿绑定。</li>
             <li>部分提供商为了利益最大化会在多个地方上卡，有可能导致账号被盗，请勿绑定重要业务。</li>
             <li>如果您不熟悉或者不会使用，请阅读使用帮助；不会用的情况下不建议使用。</li>
-            <li>飞机群：haozhuma（非此 ID 都是仿冒的）</li>
+        
+            <li><span>加入</span><a href="https://t.me/+CqKeyHF3IkE4NmNl" target="_blank"  style="color:blue;text-decoration:underline;"> 鸭子接码 Telegram 群组</a></li>
           </ol>
         </div>
       </template>
